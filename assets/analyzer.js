@@ -57,6 +57,9 @@
     { name: 'Sbazar', kw: ['sbazar'], official: ['sbazar.cz'], cat: 'marketplace' }
   ];
 
+  var BRAND_ACC = {"Česká pošta": "Českou poštu", "Zásilkovna": "Zásilkovnu", "Alza": "Alzu", "Komerční banka": "Komerční banku", "Česká spořitelna": "Českou spořitelnu", "MONETA": "MONETU", "Fio banka": "Fio banku", "státní správa": "státní úřad", "elektronická dálniční známka": "oficiální prodej dálničních známek"};
+  function brandAcc(n) { return BRAND_ACC[n] || n; }
+
   var SHORTENERS = ['bit.ly', 'tinyurl.com', 't.co', 'is.gd', 'cutt.ly', 'rb.gy', 'shorturl.at', 'ow.ly',
     'buff.ly', 'rebrand.ly', 'tiny.cc', 's.id', 't.ly', 'goo.gl', 'qrco.de', 'v.gd', 'shorturl.ac', 'urlz.fr', 'surl.li', 'bit.do'];
 
@@ -69,52 +72,53 @@
 
   var MULTI_SUFFIX = ['co.uk', 'org.uk', 'com.au', 'com.br', 'co.jp', 'com.pl', 'com.ua', 'co.za', 'com.tr', 'com.cn'];
 
-  // Pravidla pro text. Hledáme v textu bez diakritiky a malými písmeny.
+  // Pravidla pro text. Hledáme v textu bez diakritiky a malými písmeny (délka textu zůstává stejná,
+  // takže umíme podezřelá místa podtrhnout přímo v původní zprávě).
   var TEXT_RULES = [
-    { id: 'urgency', w: 15, cat: null, title: 'Nátlak na rychlé jednání',
-      detail: 'Zpráva tlačí na to, abyste jednali hned. Podvodníci nechtějí, abyste měli čas si věc ověřit.',
+    { id: 'urgency', w: 15, title: 'Spěchá na vás',
+      detail: 'Chce, abyste jednali hned a nestihli si nic ověřit.',
       re: /\b(ihned|okamzit\w*|neprodlen\w*|nalehav\w*|posledni (vyzv|upozorn|sanc)\w*|do \d{1,2} (hod|hodin|dnu|dni)\w*|do (zitr|pulnoc)\w*|vyprs\w*|propadn\w*|jeste dnes|dnes do)\b/ },
-    { id: 'payment', w: 15, cat: 'payment', title: 'Žádost o platbu nebo doplatek',
-      detail: 'Zpráva chce zaplatit, typicky malou částku za doručení, clo nebo poplatek. Malá částka je návnada, cílem jsou údaje z karty.',
+    { id: 'payment', w: 15, cat: 'payment', title: 'Chce peníze',
+      detail: 'U malých doplatků jim jde ve skutečnosti o údaje z vaší karty. Každou žádost o peníze si ověřte jinou cestou.',
       re: /\b(doplat\w*|poplat\w*|clo|cla|celni\w*|dobirk\w*|uhrad\w*|zaplat\w*|platb\w*|neuhrazen\w*|dluzn\w*)\b/ },
-    { id: 'amount', w: 5, cat: 'payment', title: 'Konkrétní malá částka',
-      detail: 'Uvedená částka je typicky nízká, aby platba nevzbudila podezření.',
+    { id: 'amount', group: 'payment', w: 5, cat: 'payment', title: 'Uvádí malou částku',
+      detail: 'Nízká částka má vypadat nevinně, aby vám nepřišlo divné ji zaplatit.',
       re: /\b\d{1,3}([.,]\d{1,2})?\s?(kc|czk|eur|€|,-)/ },
-    { id: 'package', w: 5, cat: 'package', title: 'Téma doručení zásilky',
-      detail: 'Falešné zprávy o balících jsou v Česku nejčastějším typem podvodné SMS.',
+    { id: 'package', w: 5, cat: 'package', title: 'Píše o balíku',
+      detail: 'Falešné zprávy o zásilkách jsou u nás vůbec nejčastější podvod.',
       re: /\b(zasilk\w*|balik\w*|baliku|doruc\w*|kuryr\w*|sledovaci cislo|prepravc\w*|vyzvednout|vyzvednuti|nedorucen\w*|adres\w* (je )?neuplna|neuplna adres\w*)\b/ },
-    { id: 'credentials', w: 20, cat: 'credentials', title: 'Žádost o přihlášení nebo citlivé údaje',
-      detail: 'Banka, pošta ani úřad po vás nikdy přes odkaz ve zprávě nechtějí heslo, PIN, údaje z karty ani kód z SMS.',
-      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualizuj\w* (udaje|informace|ucet)|cislo karty|udaje (z|o) karty|udaje karty|cvv|cvc|pin\b|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod)\b/ },
-    { id: 'bankstaff', w: 30, cat: 'bank', title: 'Typický scénář falešného bankéře',
-      detail: 'Bezpečný účet, bezpečnostní oddělení nebo podezřelá transakce: přesně tak začíná podvod, kdy volající přemluví oběť k převodu peněz. Žádná banka nikdy nechce, abyste peníze přeposlali jinam.',
-      re: /\b(bezpecn\w* ucet|bezpecnostni oddeleni|podezrel\w* (transakc|platb|prihlas)\w*|vas ucet (je|byl) (ohrozen|napaden|zneuzit)\w*|prevedte (penize|uspory|prostredky)|ochran\w* (vasich )?(uspor|penez))\b/ },
-    { id: 'threat', w: 15, cat: null, title: 'Výhrůžka nebo strašení',
-      detail: 'Zpráva straší zablokováním, pokutou, exekucí nebo policií. Strach má vypnout rozvahu.',
-      re: /\b(zablokovan\w*|blokac\w*|pozastaven\w*|zrusen\w* (uctu|sluzby|zasilky)|exekuc\w*|pokut\w*|trestni oznameni|soudni\w*|vymahan\w*)\b/ },
-    { id: 'prize', w: 15, cat: 'prize', title: 'Výhra, odměna nebo dárek',
+    { id: 'credentials', w: 20, cat: 'credentials', title: 'Chce vaše údaje',
+      detail: 'Pošta, banka ani úřad po vás přes odkaz nikdy nechtějí heslo, PIN, kartu ani kód z SMS.',
+      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualizuj\w* (udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod)\b/ },
+    { id: 'bankstaff', w: 30, cat: 'bank', title: 'Falešný bankéř',
+      detail: 'Žádný bezpečný účet neexistuje. Skutečná banka nikdy nechce, abyste peníze někam převáděli.',
+      re: /\b(bezpecn\w* ucet|bezpecnostni\w* oddeleni\w*|podezrel\w* (transakc|platb|prihlas)\w*|vas ucet (je|byl) (ohrozen|napaden|zneuzit)\w*|prevedte (penize|uspory|prostredky)|prevest (penize|uspory|prostredky)|ochran\w* (vasich )?(uspor|penez))\b/ },
+    { id: 'threat', w: 15, title: 'Straší vás',
+      detail: 'Hrozí zablokováním, pokutou nebo exekucí, abyste zpanikařili.',
+      re: /\b(zablokovan\w*|blokac\w*|pozastaven\w*|zrusen\w* (uctu|sluzby|zasilky)|exekuc\w*|pokut\w*|trestni oznameni|soudni\w*|vymahan\w*|bude vracen\w*)\b/ },
+    { id: 'prize', w: 15, cat: 'prize', title: 'Slibuje výhru',
       detail: 'Výhra v soutěži, do které jste se nepřihlásili, je klasická návnada.',
-      re: /\b(vyhral\w*|vyhra\b|vyhry|gratulujeme|odmen\w*|darek zdarma|zdarma ziskat|losovani|vylosovan\w*|byli jste vybran\w*)\b/ },
-    { id: 'invest', w: 15, cat: 'invest', title: 'Investice s nereálným ziskem',
-      detail: 'Slib rychlého nebo garantovaného zisku, zejména u kryptoměn, je typický investiční podvod.',
+      re: /\b(vyhral\w*|vyhra|vyhry|gratulujeme|odmen\w*|darek zdarma|zdarma ziskat|losovani|vylosovan\w*|byli jste vybran\w*)\b/ },
+    { id: 'invest', w: 15, cat: 'invest', title: 'Slibuje snadný zisk',
+      detail: 'Garantovaný zisk neexistuje. Přesně takhle začínají investiční podvody.',
       re: /\b(investic\w*|investov\w*|kryptomen\w*|bitcoin\w*|garantovan\w* (zisk|vynos)\w*|zhodnocen\w*|pasivni prijem|obchodni platform\w*|broker\w*)\b/ },
-    { id: 'family', w: 25, cat: 'family', title: 'Někdo se vydává za člena rodiny',
-      detail: 'Ahoj mami, tohle je moje nové číslo: tak začíná podvod, kdy se cizí člověk vydává za dítě nebo vnouče a brzy chce peníze.',
-      re: /\b(ahoj (mami|mamko|mamino|tati|tato|babi|dedo|dedecku)|(moje )?nove cislo|rozbil\w* (se mi )?(telefon|mobil)|ztratil\w* (jsem )?(telefon|mobil)|napis mi na whats\s?app|ulozte? si (toto|tohle|me) cislo)\b/ },
-    { id: 'remote', w: 30, cat: 'remote', title: 'Žádost o instalaci aplikace nebo vzdálený přístup',
-      detail: 'Aplikace jako AnyDesk nebo TeamViewer dají cizímu člověku plnou kontrolu nad vaším zařízením a bankovnictvím.',
-      re: /\b(anydesk|teamviewer|rustdesk|quick ?support|vzdalen\w* (pristup|sprav\w*|plo\w*)|nainstalujte (si )?(aplikaci|program)|stahnete (si )?(aplikaci|program))\b/ },
-    { id: 'refund', w: 15, cat: 'gov', title: 'Přeplatek nebo vrácení peněz',
-      detail: 'Úřady ani firmy vám přeplatek nevracejí přes odkaz ve zprávě, kde máte zadat kartu.',
+    { id: 'family', w: 25, cat: 'family', title: 'Vydává se za někoho z rodiny',
+      detail: 'Ahoj mami, mám nové číslo. Tak začíná podvod, který končí prosbou o peníze.',
+      re: /\b(ahoj (mami|mamko|mamino|tati|tato|babi|dedo|dedecku)|(moje )?nove cislo|rozbil\w* (se mi )?(telefon|mobil)|ztratil\w* (jsem )?(telefon|mobil)|napis mi na whats\s?app|uloz\w* si (ho|toto|tohle|me|moje|cislo))\b/ },
+    { id: 'remote', w: 30, cat: 'remote', title: 'Chce se dostat do vašeho zařízení',
+      detail: 'Přes AnyDesk nebo TeamViewer by cizí člověk viděl a ovládal i vaše bankovnictví.',
+      re: /\b(anydesk|teamviewer|rustdesk|quick ?support|vzdalen\w* (pristup|sprav\w*|plo\w*)|nainstalujte (si )?(prosim )?(aplikaci|program)|stahnete (si )?(aplikaci|program))\b/ },
+    { id: 'refund', w: 15, cat: 'gov', title: 'Slibuje vrácení peněz',
+      detail: 'Přeplatek vám nikdo nevrací přes odkaz, kde máte zadat kartu.',
       re: /\b(preplat\w*|vratk\w* dane|vraceni (penez|platby|dane)|refundac\w*|narok na vraceni)\b/ },
-    { id: 'vignette', w: 10, cat: 'vignette', title: 'Téma dálniční známky',
-      detail: 'Dálniční známku kupujte jen na oficiálním webu edalnice.cz. Podvodné weby ji prodávají dráž nebo vůbec.',
+    { id: 'vignette', w: 10, cat: 'vignette', title: 'Dálniční známka',
+      detail: 'Pravou dálniční známku koupíte jen na edalnice.cz.',
       re: /\b(dalnicni znamk\w*|edalnic\w*|e-znamk\w*)\b/ },
-    { id: 'marketplace', w: 20, cat: 'marketplace', title: 'Platba přes odkaz při prodeji z bazaru',
-      detail: 'Pokud něco prodáváte a kupující vám pošle odkaz, kde máte zadat kartu, abyste dostali peníze, jde o podvod. K přijetí peněz nikdy nezadáváte údaje z karty.',
-      re: /\b(prijmout platbu|prijeti platby|obdrzet (penize|platbu)|zaplatil\w* jsem vam|platba (je )?(pripravena|cekajici)|bezpecn\w* (platb|prodej|nakup)\w*|kuryr si (zbozi|vec)\w* vyzvedne)\b/ },
-    { id: 'generic', w: 5, cat: null, title: 'Neosobní oslovení',
-      detail: 'Oslovení jako Vážený zákazníku naznačuje hromadně rozesílanou zprávu.',
+    { id: 'marketplace', w: 20, cat: 'marketplace', title: 'Chce kartu, abyste dostali peníze',
+      detail: 'K přijetí platby kartu nikdy nezadáváte. Kupujícímu stačí číslo vašeho účtu.',
+      re: /\b(prijmout platbu|prijeti platby|obdrzet (penize|platbu)|zaplatil\w* (jsem )?vam|platba (je )?(pripravena|cekajici)|bezpecn\w* (platb|prodej|nakup)\w*|kuryr si (zbozi|vec)\w* vyzvedne)\b/ },
+    { id: 'generic', w: 5, title: 'Neosobní oslovení',
+      detail: 'Zpráva nejspíš odešla hromadně na tisíce lidí.',
       re: /\b(vazen\w* (zakazni|klient|uzivatel)\w*|dear customer)\b/ }
   ];
 
@@ -124,8 +128,16 @@
     return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  function normText(s) {
-    return stripDiacritics(String(s || '').toLowerCase()).replace(/\s+/g, ' ');
+  // Normalizace znak po znaku: stejná délka jako originál, aby seděly pozice.
+  function normKeep(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var ch = s[i];
+      if (/\s/.test(ch)) { out += ' '; continue; }
+      var d = ch.normalize('NFD').charAt(0).toLowerCase().charAt(0);
+      out += d || ch;
+    }
+    return out;
   }
 
   function skeleton(s) {
@@ -185,35 +197,34 @@
     return s.replace(/[.,;:!?)\]}"'»”“…]+$/, '');
   }
 
+  // Vrací odkazy i s pozicí v textu: [{ raw, start, end }]
   function findUrls(text) {
     var found = [];
-    var spans = [];
     var m;
     SCHEME_RE.lastIndex = 0;
     while ((m = SCHEME_RE.exec(text))) {
       var raw = trimTrail(m[0]);
-      found.push(raw);
-      spans.push([m.index, m.index + m[0].length]);
+      found.push({ raw: raw, start: m.index, end: m.index + raw.length });
     }
     BARE_RE.lastIndex = 0;
     while ((m = BARE_RE.exec(text))) {
       var start = m.index + m[1].length;
-      var inside = spans.some(function (sp) { return start >= sp[0] && start < sp[1]; });
+      var inside = found.some(function (f) { return start >= f.start && start < f.end; });
       if (inside) continue;
       var tld = skeleton(m[3]);
       var hasPath = m[4] && m[4].length > 1;
       if (COMMON_TLD.indexOf(tld) === -1 && !hasPath) continue;
-      // Vynecháme e-maily (doména hned za @)
       if (text[start - 1] === '@') continue;
-      found.push(trimTrail(m[2] + (m[4] || '')));
+      var r = trimTrail(m[2] + (m[4] || ''));
+      found.push({ raw: r, start: start, end: start + r.length });
     }
     var seen = {};
     return found.filter(function (u) {
-      var k = u.toLowerCase();
+      var k = u.raw.toLowerCase();
       if (seen[k]) return false;
       seen[k] = true;
       return true;
-    });
+    }).sort(function (a, b) { return a.start - b.start; });
   }
 
   function parseUrl(raw) {
@@ -252,7 +263,6 @@
     var regRaw = registrable(host);
     var tld = ascii.split('.').pop();
 
-    // Znaky domény s označením písma (pro zvýraznění v rozhraní)
     var chars = [];
     var scripts = {};
     for (var i = 0; i < host.length; i++) {
@@ -261,52 +271,31 @@
       if (sc === 'latin' || sc === 'cyrillic' || sc === 'greek') scripts[sc] = true;
       chars.push({ ch: ch, kind: (sc === 'cyrillic' || sc === 'greek') ? sc : 'plain' });
     }
-
     var foreign = chars.filter(function (c) { return c.kind !== 'plain'; });
+
     if (foreign.length) {
-      var mixed = scripts.latin && (scripts.cyrillic || scripts.greek);
       findings.push({
         sev: 'high',
-        title: mixed ? 'V adrese jsou schovaná písmena z cyrilice' : 'Adresa je napsaná jiným písmem',
-        detail: (mixed
-          ? 'Některá písmena vypadají jako běžná latinka, ale jsou z cyrilice nebo řečtiny. Adresa proto vede úplně jinam, než se zdá. Označili jsme je červeně.'
-          : 'Adresa používá písmena, která v českých webech běžně nejsou.') +
-          ' Skutečná podoba adresy pro počítač: ' + ascii
+        title: 'Falešná písmena v adrese',
+        detail: 'Červeně označená písmena jsou z azbuky. Vypadají stejně jako naše, ale adresa vede úplně jinam.'
       });
     } else if (/(^|\.)xn--/.test(ascii)) {
-      findings.push({
-        sev: 'mid',
-        title: 'Adresa v kódované podobě (punycode)',
-        detail: 'Adresa začíná xn--, což je zápis neobvyklých znaků. Často slouží k napodobení známých webů.'
-      });
+      findings.push({ sev: 'mid', title: 'Zakódovaná adresa', detail: 'Adresa začíná xn--. Takhle se často maskují falešné weby.' });
     }
 
     if (p.userinfo) {
-      findings.push({
-        sev: 'high',
-        title: 'Trik se zavináčem v adrese',
-        detail: 'Část před znakem @ (' + p.userinfo + ') je jen klam. Prohlížeč otevře až to, co je za ním: ' + host + '.'
-      });
+      findings.push({ sev: 'high', title: 'Trik se zavináčem', detail: 'Všechno před znakem @ je jen kulisa. Ve skutečnosti se otevře ' + host + '.' });
     }
 
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ascii)) {
-      findings.push({
-        sev: 'high',
-        title: 'Místo názvu je v adrese jen číslo (IP adresa)',
-        detail: 'Seriózní firmy posílají odkazy na své pojmenované weby, ne na číselné adresy serverů.'
-      });
+      findings.push({ sev: 'high', title: 'Místo názvu jen čísla', detail: 'Žádná slušná firma neposílá odkaz na číselnou adresu serveru.' });
     }
 
     var isShort = SHORTENERS.some(function (d) { return endsWithDomain(ascii, d); });
     if (isShort) {
-      findings.push({
-        sev: 'mid',
-        title: 'Zkrácený odkaz skrývá skutečný cíl',
-        detail: 'Služba ' + reg + ' jen přesměrovává jinam. Nevidíte, kam odkaz doopravdy vede.'
-      });
+      findings.push({ sev: 'mid', title: 'Zkrácený odkaz', detail: 'Nevidíte, kam doopravdy vede. Seriózní firmy ve zprávách zkracovače skoro nepoužívají.' });
     }
 
-    // Značky: napodobení nebo oficiální web
     var sk = skeleton(host);
     var joined = sk.replace(/[.\-]/g, '');
     var tokens = sk.split(/[.\-]/).filter(Boolean);
@@ -336,53 +325,43 @@
       }
     }
 
+    var summary = null;
     if (brand && !official) {
       var prefixOfficial = brand.official.filter(function (d) {
         return ascii.indexOf(d + '.') === 0 || ascii.indexOf('.' + d + '.') !== -1;
       })[0];
       findings.push({
         sev: 'high',
-        title: 'Napodobuje web: ' + brand.name,
-        detail: (prefixOfficial
-          ? 'Adresa začíná jako ' + prefixOfficial + ', ale rozhoduje konec adresy. Skutečná doména je ' + reg + '.'
+        title: 'Vydává se za ' + brandAcc(brand.name),
+        detail: prefixOfficial
+          ? 'Adresa začíná jako ' + prefixOfficial + ', jenže rozhoduje její konec. Pravý web je ' + brand.official[0] + '.'
           : (typo
-            ? 'Název domény se jen o písmeno liší od skutečné značky. Skutečná doména je ' + reg + '.'
-            : 'Adresa obsahuje název ' + brand.name + ', ale nepatří jí. Skutečná doména je ' + reg + '.')) +
-          ' Oficiální web: ' + brand.official[0] + '.'
+            ? 'Název se od skutečného liší jen o písmeno. Pravý web je ' + brand.official[0] + '.'
+            : 'Pravý web je ' + brand.official[0] + '. Tenhle odkaz s ním nemá nic společného.')
       });
-    }
-
-    if (official) {
+      summary = { kind: 'fake', brand: brand.name, brandAcc: brandAcc(brand.name), real: brand.official[0], goes: reg };
+    } else if (official) {
       findings.push({
         sev: 'ok',
-        title: 'Odkaz vede na oficiální web: ' + brand.name,
-        detail: 'Doména ' + reg + ' patří ' + brand.name + '. I tak ale platí, že podvodník může napsat pravou adresu do textu a jinou schovat pod odkaz. Nejbezpečnější je otevřít aplikaci nebo web sami, ne přes zprávu.'
+        title: 'Oficiální web: ' + brand.name,
+        detail: 'Adresa je pravá. I tak je nejjistější otevřít aplikaci nebo web sami, ne přes odkaz ve zprávě.'
       });
+      summary = { kind: 'official', brand: brand.name, goes: reg };
+    } else {
+      summary = { kind: 'unknown', goes: reg };
     }
 
     if (!official && RISKY_TLD.indexOf(tld) !== -1 && !isShort) {
-      findings.push({
-        sev: 'mid',
-        title: 'Neobvyklá koncovka .' + tld,
-        detail: 'Koncovka .' + tld + ' je levná a v podvodných kampaních velmi častá. České firmy používají hlavně .cz.'
-      });
+      findings.push({ sev: 'mid', title: 'Podezřelá koncovka .' + tld, detail: 'Levná koncovka, kterou podvodníci často používají. České firmy mají většinou .cz.' });
     }
 
     var labels = ascii.split('.');
     if (!official && (labels.length >= 5 || (regRaw.split('.')[0].replace(/^xn--/, '').match(/-/g) || []).length >= 2)) {
-      findings.push({
-        sev: 'low',
-        title: 'Nezvykle složitá adresa',
-        detail: 'Hodně teček nebo pomlček v adrese často slouží k tomu, aby se pravá doména ztratila.'
-      });
+      findings.push({ sev: 'low', title: 'Zamotaná adresa', detail: 'Spousta teček a pomlček má schovat, kam odkaz opravdu vede.' });
     }
 
     if (p.hadScheme && !p.secure && !official) {
-      findings.push({
-        sev: 'low',
-        title: 'Nezabezpečené spojení (http)',
-        detail: 'Odkaz nepoužívá šifrované spojení https. Na takové stránce nikdy nic nezadávejte.'
-      });
+      findings.push({ sev: 'low', title: 'Nešifrovaná stránka', detail: 'Odkaz nepoužívá https. Na takové stránce nikdy nic nevyplňujte.' });
     }
 
     var score = 0;
@@ -393,6 +372,11 @@
     });
     if (official && score === 0) score = -10;
 
+    var worst = findings.reduce(function (acc, f) {
+      var o = { high: 3, mid: 2, low: 1, ok: 0 };
+      return o[f.sev] > o[acc] ? f.sev : acc;
+    }, findings.length ? 'ok' : 'none');
+
     return {
       raw: p.raw,
       host: host,
@@ -401,42 +385,73 @@
       registrableRaw: regRaw,
       path: p.path,
       chars: chars,
+      foreign: foreign.length > 0,
       brand: brand ? brand.name : null,
       brandCat: brand ? brand.cat : null,
       official: official,
+      summary: summary,
       findings: findings,
+      worst: worst,
       score: score
     };
   }
 
   /* ---------- Rozbor textu ---------- */
 
-  function analyzeText(text) {
-    var norm = normText(text);
+  function analyzeText(text, skip) {
+    skip = skip || [];
+    var inSkip = function (sp) { return skip.some(function (k) { return sp[0] < k[1] && sp[1] > k[0]; }); };
+    var norm = normKeep(text);
+    var byId = {};
     var findings = [];
     var cats = {};
     var score = 0;
+
     TEXT_RULES.forEach(function (r) {
-      if (r.re.test(norm)) {
-        findings.push({ sev: r.w >= 25 ? 'high' : (r.w >= 15 ? 'mid' : 'low'), title: r.title, detail: r.detail, rule: r.id });
-        score += r.w;
-        if (r.cat) cats[r.cat] = true;
+      var re = new RegExp(r.re.source, 'g');
+      var m, spans = [];
+      while ((m = re.exec(norm)) && spans.length < 4) {
+        if (!m[0]) { re.lastIndex++; continue; }
+        var sp = [m.index, m.index + m[0].length];
+        if (!inSkip(sp)) spans.push(sp);
       }
+      if (!spans.length) return;
+      var key = r.group || r.id;
+      if (byId[key]) {
+        byId[key].spans = byId[key].spans.concat(spans);
+      } else {
+        byId[key] = { sev: r.w >= 25 ? 'high' : (r.w >= 15 ? 'mid' : 'low'), title: r.title, detail: r.detail, rule: key, spans: spans };
+        findings.push(byId[key]);
+      }
+      score += r.w;
+      if (r.cat) cats[r.cat] = true;
     });
 
-    // Slova, která míchají latinku s cyrilicí (častý trik k obejití filtrů)
-    var mixedWords = String(text || '').split(/\s+/).filter(function (w) {
-      return /[a-z]/i.test(w) && /[\u0400-\u04FF]/.test(w);
-    });
-    if (mixedWords.length) {
+    // Slova, která míchají latinku s azbukou
+    var wre = /\S+/g, w, mixed = [];
+    while ((w = wre.exec(text))) {
+      var wsp = [w.index, w.index + w[0].length];
+      if (/[a-z]/i.test(w[0]) && /[\u0400-\u04FF]/.test(w[0]) && !inSkip(wsp)) mixed.push(wsp);
+    }
+    if (mixed.length) {
       findings.push({
         sev: 'high',
-        title: 'Text obsahuje schovaná písmena z cyrilice',
-        detail: 'Slova jako ' + mixedWords.slice(0, 3).join(', ') + ' míchají latinku a cyrilici. Běžná firma tohle nedělá, podvodníci tak obcházejí filtry spamu.',
-        rule: 'mixedscript'
+        title: 'Falešná písmena v textu',
+        detail: 'Některá písmena jsou z azbuky. Běžná firma tohle nedělá, podvodníci tak obcházejí filtry spamu.',
+        rule: 'mixedscript',
+        spans: mixed.slice(0, 4)
       });
       score += 25;
     }
+
+    // U bazarového podvodu je platba od kupujícího součást triku, ne žádost o zaplacení
+    if (byId.marketplace && byId.payment) {
+      findings = findings.filter(function (f) { return f.rule !== 'payment'; });
+      score -= 15;
+    }
+
+    var order = { high: 0, mid: 1, low: 2 };
+    findings.sort(function (a, b) { return order[a.sev] - order[b.sev]; });
     return { findings: findings, cats: cats, score: score };
   }
 
@@ -446,68 +461,57 @@
     {
       id: 'expect',
       when: function (c) { return c.cats.package; },
-      text: 'Čekáte teď opravdu nějakou zásilku?',
+      text: 'Čekáte teď nějaký balík?',
       options: [
-        { v: 'no', label: 'Ne, nic nečekám', delta: 20, note: 'Zpráva o zásilce, kterou nečekáte, je téměř jistě podvod.' },
-        { v: 'yes', label: 'Ano, čekám', delta: 0, note: 'Podvodníci spoléhají právě na to, že balík čekáte. Stav zásilky ověřte v aplikaci nebo na webu dopravce, který napíšete ručně.' },
+        { v: 'no', label: 'Nečekám', delta: 20, note: 'Zpráva o balíku, který nečekáte, je skoro jistě podvod.' },
+        { v: 'yes', label: 'Čekám', delta: 0, note: 'Podvodníci sázejí právě na to. Stav zásilky si ověřte v aplikaci dopravce, ne přes odkaz ve zprávě.' },
         { v: 'unsure', label: 'Nevím', delta: 5 }
-      ]
-    },
-    {
-      id: 'sender',
-      when: function (c) { return true; },
-      text: 'Znáte odesílatele nebo číslo, ze kterého zpráva přišla?',
-      options: [
-        { v: 'unknown', label: 'Neznám ho', delta: 10 },
-        { v: 'known', label: 'Znám, píše mi běžně', delta: -5, note: 'I známý účet může být napadený. Pokud chce peníze nebo údaje, ověřte si to telefonátem.' },
-        { v: 'unsure', label: 'Nevím jistě', delta: 5 }
       ]
     },
     {
       id: 'familycheck',
       when: function (c) { return c.cats.family; },
-      text: 'Zavolali jste na staré, uložené číslo tohoto člověka?',
+      text: 'Zkusili jste zavolat na jeho staré číslo?',
       options: [
-        { v: 'no', label: 'Ještě ne', delta: 20, note: 'Zavolejte na původní číslo, které máte uložené. Pokud to opravdu píše vaše dítě nebo vnouče, hned se to vysvětlí.' },
-        { v: 'yes-other', label: 'Ano, o ničem neví', delta: 40, note: 'Potvrzeno: někdo se za vašeho blízkého vydává. Nic neposílejte a číslo zablokujte.' },
+        { v: 'no', label: 'Ještě ne', delta: 20, note: 'Zavolejte na číslo, které máte uložené. Pokud to opravdu píše vaše dítě nebo vnouče, hned se to vysvětlí.' },
+        { v: 'yes-other', label: 'Ano, o ničem neví', delta: 40, note: 'Pak je to jasné: někdo se za vašeho blízkého vydává. Nic neposílejte a číslo zablokujte.' },
         { v: 'yes-ok', label: 'Ano, potvrdil to', delta: -15 }
       ]
     },
     {
       id: 'call',
       when: function (c) { return c.cats.bank || c.cats.remote || c.cats.invest; },
-      text: 'Volal vám v souvislosti s tím někdo, kdo se představil jako banka, policie nebo úřad?',
+      text: 'Volal vám k tomu někdo, kdo tvrdil, že je z banky nebo z policie?',
       options: [
-        { v: 'yes', label: 'Ano, volal', delta: 30, note: 'Skutečná banka ani policie po vás nikdy nechtějí převod peněz, instalaci aplikace ani kódy. Zavěste a zavolejte bance sami na číslo ze zadní strany karty.' },
+        { v: 'yes', label: 'Ano, volal', delta: 30, note: 'Zavěste. Pak sami zavolejte své bance na číslo ze zadní strany karty a zeptejte se, jestli je všechno v pořádku.' },
         { v: 'no', label: 'Ne', delta: 0 }
       ]
     },
     {
       id: 'selling',
       when: function (c) { return c.cats.marketplace || (c.cats.payment && c.hasUrl && !c.cats.package); },
-      text: 'Prodáváte teď něco přes bazar nebo inzerát?',
+      text: 'Prodáváte teď něco na bazaru nebo na Vinted?',
       options: [
-        { v: 'yes', label: 'Ano, prodávám', delta: 20, note: 'Kupující, který posílá odkaz k přijetí platby, je podvodník. Peníze přijmete na číslo účtu, kartu k tomu nikdy nezadáváte.' },
+        { v: 'yes', label: 'Ano, prodávám', delta: 20, note: 'Kupující, který vám posílá odkaz k přijetí peněz, je podvodník. Stačí mu dát číslo účtu.' },
         { v: 'no', label: 'Ne', delta: 0 }
       ]
     },
     {
-      id: 'asks',
-      when: function (c) { return c.hasUrl; },
-      text: 'Co po vás stránka z odkazu chce? (pokud jste ji už otevřeli)',
+      id: 'sender',
+      when: function () { return true; },
+      text: 'Znáte číslo nebo adresu, odkud zpráva přišla?',
       options: [
-        { v: 'card', label: 'Údaje z karty', delta: 30 },
-        { v: 'login', label: 'Přihlášení nebo heslo', delta: 25 },
-        { v: 'app', label: 'Stáhnout aplikaci', delta: 30 },
-        { v: 'notopened', label: 'Zatím jsem ji neotevíral(a)', delta: 0, note: 'Dobře. Odkaz neotevírejte, dokud si nejste jistí.' }
+        { v: 'unknown', label: 'Neznám', delta: 10 },
+        { v: 'known', label: 'Znám', delta: -5, note: 'Pozor, i známý účet může někdo ukrást. Když chce peníze nebo údaje, ověřte si to telefonem.' },
+        { v: 'unsure', label: 'Nevím', delta: 5 }
       ]
     },
     {
       id: 'acted',
-      when: function (c) { return true; },
-      text: 'Už jste na odkaz klikli, něco zadali nebo zaplatili?',
+      when: function () { return true; },
+      text: 'Už jste na něco klikli, něco vyplnili nebo zaplatili?',
       options: [
-        { v: 'no', label: 'Ne, nic', delta: 0 },
+        { v: 'no', label: 'Zatím ne', delta: 0, note: 'Výborně. Tak to nechte.' },
         { v: 'yes', label: 'Ano', delta: 0, help: true }
       ]
     }
@@ -517,8 +521,13 @@
 
   function analyze(text) {
     text = String(text || '');
-    var urls = findUrls(text).map(analyzeUrl).filter(Boolean);
-    var t = analyzeText(text);
+    var found = findUrls(text);
+    var urls = found.map(function (f) {
+      var u = analyzeUrl(f.raw);
+      if (u) { u.start = f.start; u.end = f.end; }
+      return u;
+    }).filter(Boolean);
+    var t = analyzeText(text, found.map(function (f) { return [f.start, f.end]; }));
     var cats = t.cats;
     urls.forEach(function (u) { if (u.brandCat && !u.official) cats[u.brandCat] = true; });
     return {
@@ -541,15 +550,13 @@
     answers = answers || {};
     var score = a.textScore;
     var anyHigh = false;
-    var allOfficial = a.urls.length > 0;
     a.urls.forEach(function (u) {
       score += u.score;
-      if (u.findings.some(function (f) { return f.sev === 'high'; })) anyHigh = true;
-      if (!u.official) allOfficial = false;
+      if (u.worst === 'high') anyHigh = true;
     });
     if (a.textFindings.some(function (f) { return f.sev === 'high'; })) anyHigh = true;
 
-    var notes = [];
+    var notes = {};
     var needHelp = false;
     questionsFor(a).forEach(function (q) {
       var v = answers[q.id];
@@ -557,12 +564,11 @@
       var opt = q.options.filter(function (o) { return o.v === v; })[0];
       if (!opt) return;
       score += opt.delta;
-      if (opt.note) notes.push(opt.note);
+      if (opt.note) notes[q.id] = opt.note;
       if (opt.help) needHelp = true;
       if (opt.delta >= 30) anyHigh = true;
     });
 
-    // Odkaz na neznámý web + platba nebo údaje = vysoké riziko
     var unknownLink = a.urls.some(function (u) { return !u.official; });
     if (unknownLink && (a.cats.payment || a.cats.credentials)) score += 15;
 
@@ -570,7 +576,7 @@
     if (anyHigh) score = Math.max(score, 60);
 
     var level = score >= 55 ? 'high' : (score >= 25 ? 'mid' : 'low');
-    return { score: score, level: level, notes: notes, needHelp: needHelp, allOfficial: allOfficial };
+    return { score: score, level: level, notes: notes, needHelp: needHelp };
   }
 
   var api = {

@@ -1,11 +1,10 @@
-/* PEBMedia Protect: rozhraní aplikace */
+/* PEBMedia Protect: rozhraní */
 (function () {
   'use strict';
 
   var A = window.PPAnalyzer;
   var $ = function (id) { return document.getElementById(id); };
   var TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-
   var state = { analysis: null, answers: {} };
 
   function esc(s) {
@@ -13,52 +12,56 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
 
-  /* ---------- Ukázkové zprávy ---------- */
   var EXAMPLES = {
     posta: 'Česká pošta: Vaše zásilka nemohla být doručena, adresa je neúplná. Uhraďte doplatek 1,50 Kč do 24 hodin, jinak bude vrácena odesílateli: https://сeskapоsta-cz.info/track',
-    mami: 'Ahoj mami, rozbil se mi telefon, tohle je moje nové číslo. Ulož si ho. Napiš mi na WhatsApp, potřebuju rychle zaplatit fakturu, banku mám ve starém mobilu.',
+    mami: 'Ahoj mami, rozbil se mi telefon, tohle je moje nové číslo. Ulož si ho. Napiš mi na WhatsApp, potřebuju rychle zaplatit fakturu a banku mám ve starém mobilu.',
     bank: 'Dobrý den, zde bezpečnostní oddělení vaší banky. Zaznamenali jsme podezřelou transakci na vašem účtu. Pro ochranu úspor je nutné převést prostředky na bezpečný účet. Nainstalujte si prosím aplikaci AnyDesk, pomůžeme vám.',
     vinted: 'Dobrý den, zboží jsem vám zaplatil přes Vinted, kurýr si věc vyzvedne. Pro přijetí platby klikněte zde a potvrďte kartu: vinted-cz.payment-secure.online/item/552'
   };
 
-  /* ---------- Záložky ---------- */
-  function showTab(name) {
-    var check = name === 'check';
-    $('tab-check').setAttribute('aria-selected', String(check));
-    $('tab-help').setAttribute('aria-selected', String(!check));
-    $('panel-check').hidden = !check;
-    $('panel-help').hidden = check;
+  /* ---------- Přepínání stránek ---------- */
+  function showView(v) {
+    var help = v === 'help';
+    $('view-check').hidden = help;
+    $('view-help').hidden = !help;
+    $('nav-check').removeAttribute('aria-current');
+    $('nav-help').removeAttribute('aria-current');
+    if (help) $('nav-help').setAttribute('aria-current', 'page'); else $('nav-check').setAttribute('aria-current', 'page');
+    window.scrollTo(0, 0);
   }
-  $('tab-check').addEventListener('click', function () { showTab('check'); });
-  $('tab-help').addEventListener('click', function () { showTab('help'); });
-  if (location.hash === '#pomoc') showTab('help');
+  each('[data-view]', function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var v = a.getAttribute('data-view');
+      if (v === 'check' && a.classList.contains('logo')) resetCheck();
+      showView(v);
+    });
+  });
+  if (location.hash === '#pomoc') showView('help');
 
   /* ---------- Kontrola ---------- */
   function runCheck() {
     var text = $('msg').value;
-    if (!text.trim()) {
-      $('msg').focus();
-      return;
-    }
+    if (!text.trim()) { $('msg').focus(); return; }
     state.analysis = A.analyze(text);
     state.answers = {};
-    renderResult(true);
+    $('ask').hidden = true;
+    renderResult();
+    window.scrollTo(0, 0);
+  }
+  function resetCheck() {
+    $('ask').hidden = false;
+    $('result').hidden = true;
+    $('result').innerHTML = '';
   }
 
   $('go').addEventListener('click', runCheck);
   $('msg').addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCheck();
   });
-  $('clear').addEventListener('click', function () {
-    $('msg').value = '';
-    $('result').hidden = true;
-    $('result').innerHTML = '';
-    $('ocr').hidden = true;
-    state.analysis = null;
-    $('msg').focus();
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('[data-ex]'), function (b) {
+  each('[data-ex]', function (b) {
     b.addEventListener('click', function () {
       $('msg').value = EXAMPLES[b.getAttribute('data-ex')];
       runCheck();
@@ -66,168 +69,191 @@
   });
 
   var VERDICT = {
-    high: {
-      kicker: 'Vysoké riziko',
-      title: 'Tahle zpráva má jasné znaky podvodu',
-      say: 'Na odkaz neklikejte, nic neplaťte a nikam nezadávejte údaje. Zprávu můžete smazat.',
-      icon: '<svg viewBox="0 0 24 24"><path d="M12 7v6m0 4h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>'
-    },
-    mid: {
-      kicker: 'Zvýšené riziko',
-      title: 'Buďte opatrní, zpráva má podezřelé znaky',
-      say: 'Ověřte si ji jinou cestou, než nabízí zpráva: otevřete aplikaci nebo web sami, nebo zavolejte na číslo, které znáte.',
-      icon: '<svg viewBox="0 0 24 24"><path d="M12 8v5m0 3.5h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>'
-    },
-    low: {
-      kicker: 'Nízké riziko',
-      title: 'Nenašli jsme výrazné varovné znaky',
-      say: 'To ale neznamená, že je zpráva určitě v pořádku. Pokud po vás někdo chce peníze, heslo, kód nebo údaje z karty, zpozorněte.',
-      icon: '<svg viewBox="0 0 24 24"><path d="m7 12.5 3.2 3.2L17 9" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
-    }
+    high: { pill: 'Vysoké riziko', title: 'Tohle vypadá jako podvod', say: 'Na odkaz neklikejte, nic neplaťte a nikam nezadávejte své údaje.' },
+    mid: { pill: 'Zvýšené riziko', title: 'Tady něco nehraje', say: 'Než cokoli uděláte, ověřte si to jinou cestou než přes tuhle zprávu.' },
+    low: { pill: 'Nízké riziko', title: 'Nic podezřelého jsme nenašli', say: 'Kdyby ale zpráva chtěla peníze, heslo nebo kód, zbystřete.' }
   };
 
-  var TODO = {
+  var NEXT = {
     high: [
-      'Na odkaz neklikejte a na zprávu neodpovídejte.',
-      'Pokud vám někdo volá, zavěste. Skutečná banka ani policie vás nikdy nepožádají o převod peněz nebo instalaci aplikace.',
-      'Chcete-li si něco ověřit, otevřete aplikaci nebo web firmy sami, ne přes zprávu.',
-      'Číslo nebo odesílatele zablokujte a zprávu smažte. Varujte blízké, ať jim nepřijde také.'
+      'Zprávu smažte a odesílatele zablokujte.',
+      'Pokud vám k tomu někdo volá, zavěste. Banka ani policie po vás nikdy nechtějí převod peněz.',
+      'Chcete si něco ověřit? Otevřete aplikaci nebo web firmy sami, ne přes odkaz.'
     ],
     mid: [
       'Zatím na nic neklikejte a nic neplaťte.',
-      'Ověřte si zprávu u odesílatele jinou cestou: v jeho aplikaci, na webu, který napíšete ručně, nebo telefonem na známé číslo.',
-      'Pokud si nejste jistí, poraďte se s někým blízkým. Podvodníci spoléhají na to, že jednáte sami a rychle.'
+      'Ověřte si to v aplikaci firmy nebo telefonem na číslo, které znáte.',
+      'Když si nejste jistí, ukažte zprávu někomu blízkému.'
     ],
     low: [
-      'Pokud zpráva po čase přece jen začne chtít peníze nebo údaje, zkontrolujte ji znovu.',
-      'Přihlašujte se vždy přes oficiální aplikaci nebo web, který napíšete sami.'
+      'Přihlašujte se vždycky přes aplikaci nebo web, který napíšete sami.',
+      'Kdyby přišla další zpráva s žádostí o peníze, zkontrolujte ji znovu.'
     ]
   };
 
-  function renderUrl(u) {
-    var host = u.host;
-    var regLen = u.registrableRaw.length;
-    var subLen = Math.max(0, host.length - regLen);
-    var hostHtml = '';
+  // Sestaví seznam důvodů (odkazy + nálezy v textu) a přidělí jim čísla
+  function buildReasons(a) {
+    var list = [];
+    a.urls.forEach(function (u) {
+      var s = u.summary;
+      var head, sev = u.worst === 'none' ? 'info' : u.worst;
+      var rest = u.findings.slice();
+      if (s.kind === 'fake') {
+        head = { title: 'Odkaz se tváří jako ' + s.brand, detail: 'Ve skutečnosti vede na úplně jiný web. Pravý je ' + s.real + '.' };
+        rest = rest.filter(function (f) { return f.title.indexOf('Vydává se za') !== 0; });
+      } else if (s.kind === 'official') {
+        head = { title: 'Odkaz vede na pravý web ' + s.brand, detail: rest[0].detail };
+        rest = [];
+      } else if (rest.length) {
+        head = { title: rest[0].title, detail: rest[0].detail };
+        rest = rest.slice(1);
+      } else {
+        head = { title: 'Odkaz vede na web, který neznáme', detail: 'Sám o sobě nemusí být nebezpečný. Pokud po vás chce údaje nebo platbu, buďte opatrní.' };
+      }
+      list.push({ sev: sev, title: head.title, detail: head.detail, url: u, more: rest, spans: [[u.start, u.end]] });
+    });
+    a.textFindings.forEach(function (f) {
+      list.push({ sev: f.sev, title: f.title, detail: f.detail, spans: f.spans });
+    });
+    var order = { high: 0, mid: 1, ok: 2, low: 3, info: 4 };
+    list.sort(function (x, y) { return order[x.sev] - order[y.sev]; });
+    list.forEach(function (r, i) { r.n = i + 1; });
+    return list;
+  }
+
+  function domainHtml(u) {
+    var subLen = Math.max(0, u.host.length - u.registrableRaw.length);
+    var out = '';
     u.chars.forEach(function (c, i) {
       var ch = esc(c.ch);
-      var cls = i < subLen ? 'sub' : 'reg';
-      if (c.kind !== 'plain') {
-        ch = '<mark class="glyph-foreign" title="Písmeno z ' + (c.kind === 'cyrillic' ? 'cyrilice' : 'řečtiny') + '">' + ch + '</mark>';
-      }
-      hostHtml += '<span class="' + cls + '">' + ch + '</span>';
+      if (c.kind !== 'plain') ch = '<span class="fake" title="Písmeno z azbuky">' + ch + '</span>';
+      out += i < subLen ? '<span class="dim">' + ch + '</span>' : '<span class="main">' + ch + '</span>';
     });
-    var scheme = /^https?:\/\//i.test(u.raw) ? u.raw.match(/^https?:\/\//i)[0] : '';
-    var path = u.path ? '<span class="path">' + esc(u.path.length > 60 ? u.path.slice(0, 60) + '…' : u.path) + '</span>' : '';
-
-    var owner;
-    if (u.official) owner = 'Oficiální web: ' + esc(u.brand);
-    else if (u.brand) owner = 'Neznámý web, vydává se za: ' + esc(u.brand);
-    else owner = 'Neznámý web';
-
-    var foreign = u.chars.some(function (c) { return c.kind !== 'plain'; });
-    var html = '<div class="card url-card"><h3 class="section-title">Rozbor odkazu</h3>' +
-      '<div class="url-line"><span class="scheme">' + esc(scheme) + '</span>' + hostHtml + path + '</div>' +
-      '<dl class="url-meta">' +
-      '<dt>Skutečná doména</dt><dd><code>' + esc(u.registrable) + '</code></dd>' +
-      (foreign ? '<dt>Jak ji vidí počítač</dt><dd><code>' + esc(u.ascii) + '</code></dd>' : '') +
-      '<dt>Komu patří</dt><dd>' + owner + '</dd>' +
-      '</dl>';
-    if (u.findings.length) html += findingsList(u.findings);
-    return html + '</div>';
+    return out;
   }
 
-  function findingsList(list) {
-    var order = { high: 0, mid: 1, low: 2, ok: 3 };
-    return '<ul class="findings">' + list.slice().sort(function (a, b) { return order[a.sev] - order[b.sev]; }).map(function (f) {
-      return '<li class="finding ' + f.sev + '"><span class="dot" aria-hidden="true"></span><div><b>' + esc(f.title) + '</b><p>' + esc(f.detail) + '</p></div></li>';
-    }).join('') + '</ul>';
+  function bubbleHtml(text, reasons) {
+    var marks = [];
+    reasons.forEach(function (r) {
+      r.spans.forEach(function (sp, i) {
+        marks.push({ s: sp[0], e: sp[1], n: i === 0 ? r.n : null, sev: r.sev, url: r.url });
+      });
+    });
+    marks.sort(function (x, y) { return x.s - y.s || (y.e - y.s) - (x.e - x.s); });
+    var out = '', pos = 0;
+    marks.forEach(function (m) {
+      if (m.s < pos) return;
+      out += esc(text.slice(pos, m.s));
+      var inner = '';
+      var seg = text.slice(m.s, m.e);
+      for (var i = 0; i < seg.length; i++) {
+        var ch = seg[i];
+        inner += /[Ѐ-ӿͰ-Ͽ]/.test(ch) ? '<span class="fake">' + esc(ch) + '</span>' : esc(ch);
+      }
+      out += '<mark class="hl ' + m.sev + '">' + inner + (m.n ? '<sup>' + m.n + '</sup>' : '') + '</mark>';
+      pos = m.e;
+    });
+    return out + esc(text.slice(pos));
   }
 
-  function renderResult(scroll) {
+  function renderResult() {
     var a = state.analysis;
-    if (!a) return;
     var ev = A.evaluate(a, state.answers);
     var v = VERDICT[ev.level];
-    var on = { low: 1, mid: 2, high: 3 }[ev.level];
+    var reasons = buildReasons(a);
 
-    var html = '';
-    html += '<div class="verdict ' + ev.level + '"><div class="verdict-top"><div class="verdict-icon" aria-hidden="true">' + v.icon + '</div>' +
-      '<div><p class="verdict-kicker">' + v.kicker + '</p><h2>' + v.title + '</h2></div></div>' +
-      '<p class="say">' + v.say + '</p>' +
-      '<div class="meter" aria-hidden="true">' + [1, 2, 3].map(function (i) { return '<span class="' + (i <= on ? 'on' : '') + '"></span>'; }).join('') + '</div>' +
-      '<div class="meter-labels" aria-hidden="true"><span>Nízké</span><span>Zvýšené</span><span>Vysoké</span></div></div>';
+    var h = '<p class="back"><button type="button" class="link" data-act="again">Zkontrolovat jinou zprávu</button></p>';
+    h += '<div class="verdict"><span class="pill ' + ev.level + '">' + v.pill + '</span><h1>' + v.title + '</h1><p>' + v.say + '</p></div>';
+
+    h += '<p class="msg-label">Vaše zpráva</p><div class="bubble">' + bubbleHtml(a.text, reasons) + '</div>';
+
+    if (reasons.length) {
+      h += '<ol class="reasons">' + reasons.map(function (r) {
+        var extra = '';
+        if (r.url && (r.url.foreign || r.url.summary.kind === 'fake')) {
+          extra += '<span class="domain">' + domainHtml(r.url) + '</span>';
+          if (r.url.foreign) extra += '<p>Počítač tu adresu čte jako <b style="display:inline;font-family:var(--mono);font-size:.9em">' + esc(r.url.ascii) + '</b>.</p>';
+        }
+        if (r.more && r.more.length) {
+          extra += '<ul class="more">' + r.more.map(function (f) { return '<li>' + esc(f.title) + '</li>'; }).join('') + '</ul>';
+        }
+        return '<li class="reason ' + r.sev + '"><span class="num">' + r.n + '</span><div><b>' + esc(r.title) + '</b><p>' + esc(r.detail) + '</p>' + extra + '</div></li>';
+      }).join('') + '</ol>';
+    } else {
+      h += '<p class="none">Ve zprávě jsme nenašli žádné typické triky podvodníků.</p>';
+    }
 
     if (ev.needHelp) {
-      html += '<div class="help-callout"><p>Už jste klikli nebo něco zadali? Řekneme vám přesně, co teď udělat.</p>' +
-        '<button type="button" class="btn btn-primary" data-go-help>Co dělat teď</button></div>';
+      h += '<div class="callout"><p>Už jste na něco klikli nebo něco zaplatili? Poradíme, co udělat hned teď.</p><button type="button" class="btn" data-act="help">Co mám dělat</button></div>';
     }
 
-    a.urls.forEach(function (u) { html += renderUrl(u); });
-
-    html += '<div class="card"><h3 class="section-title">Co jsme ve zprávě našli</h3>';
-    if (a.textFindings.length) html += findingsList(a.textFindings);
-    else html += '<p class="empty-note">V samotném textu jsme nenašli typické fráze podvodníků.</p>';
-    html += '</div>';
-
+    // Otázky: odpovězené shrnuté, aktuální jedna, zbytek čeká
     var qs = A.questionsFor(a);
-    if (qs.length) {
-      html += '<div class="card"><h3 class="section-title">Upřesněte vyhodnocení</h3><div class="questions">';
-      qs.forEach(function (q) {
-        html += '<div class="q"><p id="q-' + q.id + '">' + esc(q.text) + '</p><div class="q-opts" role="group" aria-labelledby="q-' + q.id + '">' +
-          q.options.map(function (o) {
-            return '<button type="button" class="q-opt" data-q="' + q.id + '" data-v="' + o.v + '" aria-pressed="' + (state.answers[q.id] === o.v) + '">' + esc(o.label) + '</button>';
-          }).join('') + '</div></div>';
-      });
-      html += '</div>';
-      if (ev.notes.length) {
-        html += '<div class="answer-notes">' + ev.notes.map(function (n) { return '<p>' + esc(n) + '</p>'; }).join('') + '</div>';
+    h += '<div class="box"><h2>Pomozte nám to upřesnit</h2>';
+    var current = null;
+    qs.forEach(function (q) {
+      var ans = state.answers[q.id];
+      if (ans) {
+        var opt = q.options.filter(function (o) { return o.v === ans; })[0];
+        h += '<div class="answered"><span class="q">' + esc(q.text) + '</span><span class="a">' + esc(opt.label) + '</span>' +
+          '<button type="button" class="link" data-undo="' + q.id + '">změnit</button>' +
+          (ev.notes[q.id] ? '<p class="note">' + esc(ev.notes[q.id]) + '</p>' : '') + '</div>';
+      } else if (!current) {
+        current = q;
       }
-      html += '</div>';
+    });
+    if (current) {
+      h += '<div class="ask-q"><p>' + esc(current.text) + '</p><div class="opts">' + current.options.map(function (o) {
+        return '<button type="button" class="opt" data-q="' + current.id + '" data-v="' + o.v + '">' + esc(o.label) + '</button>';
+      }).join('') + '</div></div>';
+    } else {
+      h += '<p class="done-q">Díky, hodnocení výše už počítá s vašimi odpověďmi.</p>';
     }
+    h += '</div>';
 
-    html += '<div class="card"><h3 class="section-title">Co doporučujeme</h3><ol class="todo">' +
-      TODO[ev.level].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>';
-
-    html += '<p class="disclaimer">Vyhodnocení je orientační a vychází z pravidel a známých triků podvodníků. Nový nebo neobvyklý podvod nemusí zachytit. Rozhodnutí je vždy na vás.</p>';
+    h += '<div class="box"><h2>Co dělat teď</h2><ol class="steps">' + NEXT[ev.level].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>';
+    h += '<p class="small">Hodnocení je orientační. Vychází ze známých triků podvodníků, úplně nový podvod nemusí poznat.</p>';
 
     var box = $('result');
-    box.innerHTML = html;
+    box.innerHTML = h;
     box.hidden = false;
 
-    Array.prototype.forEach.call(box.querySelectorAll('.q-opt'), function (b) {
+    box.querySelector('[data-act="again"]').addEventListener('click', function () { resetCheck(); $('msg').focus(); window.scrollTo(0, 0); });
+    var hb = box.querySelector('[data-act="help"]');
+    if (hb) hb.addEventListener('click', function () { prefillReport(); showView('help'); });
+    Array.prototype.forEach.call(box.querySelectorAll('.opt'), function (b) {
       b.addEventListener('click', function () {
-        var q = b.getAttribute('data-q');
-        var val = b.getAttribute('data-v');
-        state.answers[q] = state.answers[q] === val ? undefined : val;
-        var y = window.scrollY;
-        renderResult(false);
-        window.scrollTo(0, y);
+        state.answers[b.getAttribute('data-q')] = b.getAttribute('data-v');
+        rerender();
       });
     });
-    var hb = box.querySelector('[data-go-help]');
-    if (hb) hb.addEventListener('click', function () {
-      prefillReport();
-      showTab('help');
-      $('panel-help').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-undo]'), function (b) {
+      b.addEventListener('click', function () {
+        delete state.answers[b.getAttribute('data-undo')];
+        rerender();
+      });
     });
-
-    if (scroll) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  /* ---------- Čtení screenshotu (OCR) ---------- */
+  function rerender() {
+    var y = window.scrollY;
+    renderResult();
+    window.scrollTo(0, y);
+  }
+
+  /* ---------- Screenshot (OCR) ---------- */
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
       if (window.Tesseract) return resolve();
       var s = document.createElement('script');
       s.src = src;
       s.onload = function () { resolve(); };
-      s.onerror = function () { reject(new Error('Nepodařilo se načíst čtečku textu.')); };
+      s.onerror = function () { reject(new Error('load')); };
       document.head.appendChild(s);
     });
   }
 
-  // Úprava obrázku pro lepší čtení: zvětšení malých snímků, odstíny šedi, převrácení tmavého režimu.
+  // Zvětšení malých snímků, odstíny šedi a převrácení tmavého režimu pro lepší čtení
   function prepareImage(file) {
     return new Promise(function (resolve) {
       var img = new Image();
@@ -236,74 +262,63 @@
         try {
           var scale = img.width < 1000 ? 2 : 1;
           var c = document.createElement('canvas');
-          c.width = img.width * scale;
-          c.height = img.height * scale;
+          c.width = img.width * scale; c.height = img.height * scale;
           var ctx = c.getContext('2d');
           ctx.drawImage(img, 0, 0, c.width, c.height);
-          var d = ctx.getImageData(0, 0, c.width, c.height);
-          var px = d.data, sum = 0, i;
+          var d = ctx.getImageData(0, 0, c.width, c.height), px = d.data, sum = 0, i;
           for (i = 0; i < px.length; i += 4) {
             var g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-            px[i] = px[i + 1] = px[i + 2] = g;
-            sum += g;
+            px[i] = px[i + 1] = px[i + 2] = g; sum += g;
           }
-          if (sum / (px.length / 4) < 110) {
-            for (i = 0; i < px.length; i += 4) { px[i] = px[i + 1] = px[i + 2] = 255 - px[i]; }
-          }
+          if (sum / (px.length / 4) < 110) for (i = 0; i < px.length; i += 4) px[i] = px[i + 1] = px[i + 2] = 255 - px[i];
           ctx.putImageData(d, 0, 0);
           resolve(c);
-        } catch (e) {
-          resolve(file);
-        } finally {
-          URL.revokeObjectURL(url);
-        }
+        } catch (e) { resolve(file); } finally { URL.revokeObjectURL(url); }
       };
       img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
       img.src = url;
     });
   }
 
-  var ocrBusy = false;
+  var busy = false;
   function runOcr(file) {
-    if (!file || !/^image\//.test(file.type) || ocrBusy) return;
-    ocrBusy = true;
+    if (!file || !/^image\//.test(file.type) || busy) return;
+    busy = true;
+    resetCheck();
+    showView('check');
     $('ocr').hidden = false;
     $('ocr-note').hidden = true;
-    $('ocr-bar').style.width = '4%';
-    $('ocr-status').textContent = 'Připravuji čtení textu';
-    var reader = new FileReader();
-    reader.onload = function () { $('ocr-img').src = reader.result; };
-    reader.readAsDataURL(file);
+    $('ocr-bar').style.width = '5%';
+    $('ocr-status').textContent = 'Čtu text z obrázku';
+    var r = new FileReader();
+    r.onload = function () { $('ocr-img').src = r.result; };
+    r.readAsDataURL(file);
 
     loadScript(TESSERACT_SRC)
       .then(function () { return prepareImage(file); })
       .then(function (img) {
-        $('ocr-status').textContent = 'Čtu text z obrázku';
         return window.Tesseract.recognize(img, 'ces+eng', {
           logger: function (m) {
-            if (m.status === 'recognizing text') $('ocr-bar').style.width = Math.max(8, Math.round(m.progress * 100)) + '%';
-            else if (/load/.test(m.status)) $('ocr-status').textContent = 'Načítám češtinu pro čtení textu';
+            if (m.status === 'recognizing text') $('ocr-bar').style.width = Math.max(10, Math.round(m.progress * 100)) + '%';
           }
         });
       })
-      .then(function (r) {
-        var text = (r && r.data && r.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
-        $('ocr-bar').style.width = '100%';
+      .then(function (res) {
+        var text = (res && res.data && res.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
         if (!text) throw new Error('empty');
+        $('ocr').hidden = true;
         var cur = $('msg').value.trim();
         $('msg').value = cur ? cur + '\n\n' + text : text;
-        $('ocr-status').textContent = 'Text jsme přečetli';
-        $('ocr-note').textContent = 'Zkontrolujte prosím hlavně odkaz. Čtení z obrázku může splést podobné znaky, například l a 1.';
+        $('ocr-note').textContent = 'Text jsme z obrázku přečetli. Zkontrolujte hlavně odkaz, čtení může splést podobné znaky.';
         $('ocr-note').hidden = false;
         runCheck();
       })
       .catch(function () {
-        $('ocr-status').textContent = 'Text z obrázku se nepodařilo přečíst';
-        $('ocr-note').textContent = 'Opište prosím do pole výše hlavní část zprávy, hlavně odkaz. Kontrola pak funguje stejně.';
+        $('ocr').hidden = true;
+        $('ocr-note').textContent = 'Z obrázku se text přečíst nepodařilo. Opište sem prosím aspoň odkaz a hlavní větu ze zprávy.';
         $('ocr-note').hidden = false;
-        $('ocr-bar').style.width = '0';
       })
-      .then(function () { ocrBusy = false; });
+      .then(function () { busy = false; });
   }
 
   $('pick').addEventListener('click', function () { $('file').click(); });
@@ -312,12 +327,8 @@
     this.value = '';
   });
   var drop = $('drop');
-  ['dragenter', 'dragover'].forEach(function (ev) {
-    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); });
-  });
-  ['dragleave', 'drop'].forEach(function (ev) {
-    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-over'); });
-  });
+  ['dragenter', 'dragover'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
   drop.addEventListener('drop', function (e) {
     var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (f) runOcr(f);
@@ -327,99 +338,84 @@
     for (var i = 0; i < items.length; i++) {
       if (items[i].type && items[i].type.indexOf('image/') === 0) {
         e.preventDefault();
-        showTab('check');
         runOcr(items[i].getAsFile());
         return;
       }
     }
   });
 
-  /* ---------- Pomoc obětem ---------- */
+  /* ---------- Už se to stalo ---------- */
   var SCENARIOS = [
     {
-      id: 'click', title: 'Klikl(a) jsem na odkaz', sub: 'ale nic jsem nezadal(a)',
+      title: 'Klikl(a) jsem na odkaz, ale nic nevyplnil(a)',
       steps: [
-        ['Zavřete stránku', 'Nic dalšího na ní nevyplňujte a nic nestahujte.'],
-        ['Pokud se něco stáhlo, neotevírejte to', 'Soubor smažte. Na Androidu nikdy neinstalujte aplikaci, kterou vám nabídne cizí stránka.'],
-        ['Sledujte účty a zprávy', 'Pár dní si všímejte neobvyklých SMS, přihlášení nebo plateb.'],
-        ['Zprávu smažte a odesílatele zablokujte', 'Ve většině případů se samotným kliknutím nic vážného nestane.']
+        ['Zavřete stránku.', 'Nic na ní nevyplňujte a nic nestahujte.'],
+        ['Pokud se něco stáhlo, neotevírejte to.', 'Soubor smažte. Aplikace z cizích stránek nikdy neinstalujte.'],
+        ['Pár dní hlídejte účty.', 'Všímejte si neobvyklých SMS, přihlášení nebo plateb.']
       ],
-      tip: 'Pokud se po kliknutí stáhla a nainstalovala aplikace, pokračujte podle bodu Nainstaloval(a) jsem aplikaci.'
+      tip: 'Samotné kliknutí většinou nic vážného nezpůsobí. Nejdůležitější je nic nevyplnit.'
     },
     {
-      id: 'password', title: 'Zadal(a) jsem heslo', sub: 'do e-mailu, banky nebo sociální sítě',
+      title: 'Zadal(a) jsem heslo',
       steps: [
-        ['Hned změňte heslo', 'Přihlaste se přes oficiální aplikaci nebo web, který napíšete ručně, a heslo změňte.'],
-        ['Změňte ho všude, kde jste ho použili', 'Podvodníci zkouší stejné heslo i na dalších službách.'],
-        ['Zapněte dvoufázové ověření', 'Účet pak nepůjde otevřít jen s heslem.'],
-        ['Odhlaste všechna ostatní zařízení', 'Většina služeb to umí v nastavení zabezpečení.'],
-        ['U e-mailu zkontrolujte přeposílání', 'Útočníci si často nastaví tiché přeposílání vaší pošty.'],
-        ['Pokud šlo o bankovnictví, volejte bance', 'Banka může účet ochránit a zkontrolovat pohyby.']
+        ['Hned heslo změňte.', 'Přihlaste se přes oficiální aplikaci nebo web, který napíšete ručně.'],
+        ['Změňte ho i všude jinde, kde ho používáte.', 'Podvodníci ho zkusí i na e-mailu, Facebooku a dalších službách.'],
+        ['Zapněte dvoufázové ověření.', 'Pak se do účtu nedostane nikdo jen s heslem.'],
+        ['Odhlaste ostatní zařízení.', 'Najdete to v nastavení zabezpečení účtu.'],
+        ['Šlo o bankovnictví? Volejte bance.', 'Ověří, jestli se s účtem něco nedělo.']
       ]
     },
     {
-      id: 'card', title: 'Zadal(a) jsem údaje z karty', sub: 'číslo karty, platnost nebo CVV',
+      title: 'Zadal(a) jsem údaje z karty',
       steps: [
-        ['Okamžitě kartu zablokujte', 'V bankovní aplikaci, nebo telefonem na čísle ze zadní strany karty.'],
-        ['Zavolejte bance', 'Řekněte, co se stalo. Banka může zastavit čekající platby.'],
-        ['Neschvalujte nic, co jste nezadali', 'Pokud vám přijde žádost o potvrzení platby, kterou jste nedělali, odmítněte ji.'],
-        ['Projděte výpis', 'Neznámé platby u banky reklamujte co nejdříve.'],
-        ['Podejte oznámení na policii', 'Podklady si připravte níže.']
+        ['Kartu hned zablokujte.', 'V aplikaci banky, nebo na čísle ze zadní strany karty.'],
+        ['Zavolejte bance.', 'Řekněte, co se stalo. Může zastavit čekající platby.'],
+        ['Nic, co jste sami nezadali, neschvalujte.', 'Když vám přijde žádost o potvrzení platby, odmítněte ji.'],
+        ['Projděte výpis.', 'Neznámé platby u banky co nejdřív reklamujte.'],
+        ['Podejte oznámení na policii.', 'Podklady si připravíte níže.']
       ]
     },
     {
-      id: 'money', title: 'Poslal(a) jsem peníze', sub: 'převodem, kartou nebo v hotovosti',
+      title: 'Poslal(a) jsem peníze',
       steps: [
-        ['Hned volejte své bance', 'Požádejte o zastavení nebo vrácení platby. Čím dřív, tím větší šance.'],
-        ['Nic dalšího neposílejte', 'Podvodníci často chtějí další platbu, třeba na vrácení předchozí.'],
-        ['Uložte si důkazy', 'Zprávy, snímky obrazovky, čísla, odkazy a potvrzení plateb.'],
-        ['Podejte oznámení na policii', 'Na kterékoli služebně. Podklady si připravte níže.'],
-        ['Pozor na falešné vymahače', 'Kdo slibuje vrácení peněz za poplatek, je další podvodník.']
+        ['Hned volejte bance.', 'Požádejte o zastavení nebo vrácení platby. Rozhodují minuty.'],
+        ['Už nic neposílejte.', 'Podvodníci často chtějí další platbu, třeba na vrácení té první.'],
+        ['Schovejte si důkazy.', 'Zprávy, screenshoty, čísla, odkazy a potvrzení plateb.'],
+        ['Podejte oznámení na policii.', 'Na kterékoli služebně. Podklady si připravíte níže.']
+      ],
+      tip: 'Pozor na lidi, kteří vám později nabídnou vrácení peněz za poplatek. Jsou to další podvodníci.'
+    },
+    {
+      title: 'Nainstaloval(a) jsem aplikaci nebo pustil(a) někoho do počítače',
+      steps: [
+        ['Odpojte se od internetu.', 'Vypněte Wi-Fi i mobilní data.'],
+        ['Z jiného telefonu volejte bance.', 'Ať zablokuje bankovnictví i kartu.'],
+        ['Aplikaci odinstalujte.', 'Hlavně AnyDesk, TeamViewer, RustDesk nebo cokoli, co neznáte.'],
+        ['Z jiného zařízení si změňte hesla.', 'K bance, e-mailu a dalším důležitým účtům.'],
+        ['Nechte zařízení zkontrolovat.', 'Antivirem nebo u odborníka.']
       ]
     },
     {
-      id: 'app', title: 'Nainstaloval(a) jsem aplikaci', sub: 'nebo jsem někomu dal(a) přístup k počítači',
+      title: 'Řekl(a) jsem někomu kód z SMS',
       steps: [
-        ['Odpojte zařízení od internetu', 'Vypněte Wi-Fi i mobilní data, aby útočník ztratil přístup.'],
-        ['Volejte bance z jiného telefonu', 'Ať zablokuje přístup do bankovnictví a karty.'],
-        ['Odinstalujte aplikaci', 'Hlavně AnyDesk, TeamViewer, RustDesk a podobné aplikace, nebo cokoli neznámého.'],
-        ['Z jiného zařízení změňte hesla', 'K bankovnictví, e-mailu a dalším důležitým účtům.'],
-        ['Nechte zařízení zkontrolovat', 'Antivirem nebo u odborníka. V horším případě pomůže obnovení továrního nastavení.']
-      ]
-    },
-    {
-      id: 'code', title: 'Sdělil(a) jsem kód z SMS', sub: 'nebo potvrdil(a) něco v aplikaci',
-      steps: [
-        ['Hned kontaktujte banku nebo službu', 'Kód mohl schválit přihlášení, platbu nebo přidání karty do cizího telefonu.'],
-        ['U WhatsAppu se znovu přihlaste', 'Tím útočníka odhlásíte. Pak zapněte dvoufázové ověření s PIN.'],
-        ['Varujte své kontakty', 'Z vašeho účtu mohou chodit prosby o peníze.'],
-        ['Podejte oznámení na policii', 'Zvlášť pokud odešly peníze.']
+        ['Hned volejte bance nebo dané službě.', 'Kód mohl schválit platbu, přihlášení nebo kartu v cizím mobilu.'],
+        ['U WhatsAppu se znovu přihlaste.', 'Tím útočníka vyhodíte. Pak si zapněte ověření pomocí PIN.'],
+        ['Varujte známé.', 'Z vašeho účtu jim mohou přijít prosby o peníze.']
       ]
     }
   ];
 
-  function renderScenarios() {
-    $('scenarios').innerHTML = SCENARIOS.map(function (s) {
-      return '<button type="button" class="scenario" data-sc="' + s.id + '" aria-pressed="false"><b>' + esc(s.title) + '</b><span>' + esc(s.sub) + '</span></button>';
-    }).join('');
-    Array.prototype.forEach.call(document.querySelectorAll('.scenario'), function (b) {
-      b.addEventListener('click', function () { openScenario(b.getAttribute('data-sc')); });
+  $('scenarios').innerHTML = SCENARIOS.map(function (s) {
+    return '<details><summary>' + esc(s.title) + '</summary><div class="inner"><ol>' +
+      s.steps.map(function (st) { return '<li><b>' + esc(st[0]) + '</b><span>' + esc(st[1]) + '</span></li>'; }).join('') +
+      '</ol>' + (s.tip ? '<p class="tip">' + esc(s.tip) + '</p>' : '') + '</div></details>';
+  }).join('');
+  // Vždy otevřená jen jedna položka
+  each('#scenarios details', function (d) {
+    d.addEventListener('toggle', function () {
+      if (d.open) each('#scenarios details', function (o) { if (o !== d) o.open = false; });
     });
-  }
-
-  function openScenario(id) {
-    var s = SCENARIOS.filter(function (x) { return x.id === id; })[0];
-    Array.prototype.forEach.call(document.querySelectorAll('.scenario'), function (b) {
-      b.setAttribute('aria-pressed', String(b.getAttribute('data-sc') === id));
-    });
-    var box = $('steps');
-    box.innerHTML = '<h3>' + esc(s.title) + ': co udělat teď</h3><ol>' +
-      s.steps.map(function (st) { return '<li><b>' + esc(st[0]) + '</b>' + esc(st[1]) + '</li>'; }).join('') + '</ol>' +
-      (s.tip ? '<p class="tip">' + esc(s.tip) + '</p>' : '') +
-      '<p class="tip">Uložte si důkazy dřív, než cokoli smažete: snímky obrazovky, číslo odesílatele, odkaz a potvrzení plateb.</p>';
-    box.hidden = false;
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
+  });
 
   /* ---------- Podklady pro policii ---------- */
   function prefillReport() {
@@ -433,51 +429,44 @@
     e.preventDefault();
     var val = function (id) { return $(id).value.trim(); };
     var checked = Array.prototype.map.call(document.querySelectorAll('.checks input:checked'), function (c) { return c.value; });
-    var now = new Date();
-    var lines = [
+    var L = [
       'PODKLADY K OZNÁMENÍ PODVODU',
-      'Připraveno ' + now.toLocaleDateString('cs-CZ') + ' pomocí PEBMedia Protect',
+      'Připraveno ' + new Date().toLocaleDateString('cs-CZ'),
       '',
       'Kdy se to stalo: ' + (val('r-when') || 'neuvedeno'),
-      'Způsob kontaktu: ' + $('r-channel').value,
-      'Odesílatel (číslo nebo adresa): ' + (val('r-from') || 'neuvedeno'),
+      'Jak mě kontaktovali: ' + $('r-channel').value,
+      'Číslo nebo adresa podvodníka: ' + (val('r-from') || 'neuvedeno'),
       'Odkaz ze zprávy: ' + (val('r-link') || 'neuvedeno'),
-      ''
+      '',
+      'Co jsem udělal(a):'
     ];
-    lines.push('Co se stalo:');
-    if (checked.length) checked.forEach(function (c) { lines.push('  • ' + c); });
-    else lines.push('  • neuvedeno');
-    lines.push('');
+    if (checked.length) checked.forEach(function (c) { L.push('  • ' + c); }); else L.push('  • neuvedeno');
+    L.push('');
     if (val('r-amount') || val('r-account')) {
-      lines.push('Způsobená škoda: ' + (val('r-amount') || 'neuvedeno'));
-      lines.push('Účet příjemce: ' + (val('r-account') || 'neuvedeno'));
-      lines.push('');
+      L.push('Škoda: ' + (val('r-amount') || 'neuvedeno'));
+      L.push('Peníze odešly na: ' + (val('r-account') || 'neuvedeno'));
+      L.push('');
     }
-    if (val('r-desc')) { lines.push('Popis události:'); lines.push(val('r-desc')); lines.push(''); }
-    if (val('r-msg')) { lines.push('Text podvodné zprávy:'); lines.push(val('r-msg')); lines.push(''); }
-    lines.push('Mám k dispozici: snímky obrazovky zpráv, číslo odesílatele' + (val('r-amount') ? ', potvrzení o platbě' : '') + '.');
-    $('report-text').textContent = lines.join('\n');
+    if (val('r-desc')) L.push('Popis:', val('r-desc'), '');
+    if (val('r-msg')) L.push('Text zprávy:', val('r-msg'), '');
+    L.push('Mám u sebe screenshoty zpráv' + (val('r-amount') ? ' a potvrzení o platbě' : '') + '.');
+    $('report-text').textContent = L.join('\n');
     $('report-out').hidden = false;
     $('copy-msg').textContent = '';
     $('report-out').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
   $('copy').addEventListener('click', function () {
-    var text = $('report-text').textContent;
     var done = function () { $('copy-msg').textContent = 'Zkopírováno'; };
     var fallback = function () {
-      var r = document.createRange();
-      r.selectNodeContents($('report-text'));
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(r);
-      $('copy-msg').textContent = 'Text je označený, zkopírujte ho pomocí Ctrl+C';
+      var rng = document.createRange();
+      rng.selectNodeContents($('report-text'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
+      $('copy-msg').textContent = 'Text je označený, zkopírujte ho';
     };
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText($('report-text').textContent).then(done, fallback);
       else fallback();
     } catch (err) { fallback(); }
   });
-
-  renderScenarios();
 })();
