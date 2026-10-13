@@ -729,3 +729,24 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 .logo-home:hover .logo-tag, .logo-home:focus-visible .logo-tag { max-width: 0; opacity: 0; padding-inline: 0; margin-left: -8px; }
 .logo-home:hover > span:not(.logo-tag):not(.logo-mark) { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .logo-home .logo-tag { transition: none; } }
+
+/* Odchod na pebmedia.cz: stránka sjede dolů a zespodu vyjede plocha PEBMedia */
+body.is-leaving { overflow: hidden; }
+body.is-leaving > *:not(.leave-curtain) {
+  transition: transform .6s cubic-bezier(0.7, 0, 0.84, 0), opacity .5s ease-in;
+  transform: translateY(60vh); opacity: 0;
+}
+.leave-curtain {
+  position: fixed; inset: 0; z-index: 1000; background: var(--bg);
+  display: grid; place-items: center; transform: translateY(100%);
+  transition: transform .7s cubic-bezier(0.16, 1, 0.3, 1) .25s;
+  border-top: 3px solid var(--accent); box-shadow: 0 -24px 60px rgba(20, 24, 27, 0.14);
+}
+.leave-curtain.is-in { transform: translateY(0); }
+.leave-brand {
+  display: flex; align-items: center; gap: 14px; opacity: 0; transform: translateY(14px);
+  font-family: var(--font-display); font-weight: 700; font-size: clamp(34px, 7vw, 56px); letter-spacing: -0.02em; color: var(--ink);
+  transition: opacity .4s ease .65s, transform .5s var(--ease) .65s;
+}
+.leave-brand .logo-mark { width: 1em; height: 1em; }
+.leave-curtain.is-in .leave-brand { opacity: 1; transform: none; }

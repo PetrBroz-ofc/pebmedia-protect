@@ -975,6 +975,31 @@
     copyText($('r-addr').textContent, $('r-addr'), $('copy-msg'), 'Adresa zkopírována');
   });
 
+  /* ---------- Odchod na pebmedia.cz s animací ---------- */
+  var home = document.querySelector('.logo-home');
+  if (home) home.addEventListener('click', function (e) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || document.body.classList.contains('is-leaving')) return;
+    e.preventDefault();
+    var href = home.href;
+    var c = document.createElement('div');
+    c.className = 'leave-curtain';
+    c.setAttribute('aria-hidden', 'true');
+    c.innerHTML = '<span class="leave-brand"><span class="logo-mark"><svg viewBox="0 0 400 400"><use href="#logoMarkP"/></svg></span>PEBMedia</span>';
+    document.body.appendChild(c);
+    void c.offsetWidth;
+    document.body.classList.add('is-leaving');
+    c.classList.add('is-in');
+    announce('Přecházím na pebmedia.cz.');
+    setTimeout(function () { window.location.href = href; }, 1150);
+  });
+  // Návrat tlačítkem Zpět z pebmedia.cz: stránka se nesmí obnovit schovaná.
+  window.addEventListener('pageshow', function () {
+    document.body.classList.remove('is-leaving');
+    each('.leave-curtain', function (c) { c.parentNode.removeChild(c); });
+  });
+
   /* ---------- Start ---------- */
   hist('replaceState', { view: viewFromHash(), result: false }, HASH[viewFromHash()]);
   setView(viewFromHash());
