@@ -5,36 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PEBMedia Protect</title>
 <meta name="description" content="Přišla vám podezřelá SMS nebo e-mail? Vložte ji a zjistěte, jestli jde o podvod. Zdarma, bez registrace, nic se neodesílá.">
-<meta name="theme-color" content="#0B6E63">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<meta name="theme-color" content="#F6F6F3">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect x='12' y='12' width='376' height='376' rx='88' fill='%230B6E63'/%3E%3Crect x='130' y='88' width='49' height='224' rx='10' fill='%23F6F6F3'/%3E%3Crect x='130' y='88' width='140' height='42' rx='10' fill='%23F6F6F3'/%3E%3Crect x='228' y='88' width='42' height='126' rx='10' fill='%23F6F6F3'/%3E%3Crect x='130' y='172' width='140' height='42' rx='10' fill='%23F6F6F3'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts.css">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <!--BODY-->
-<header class="top">
-  <div class="top-in">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logoMarkP" viewBox="0 0 400 400">
+    <rect x="12" y="12" width="376" height="376" rx="88" fill="#0B6E63"/>
+    <rect x="130" y="88" width="49" height="224" rx="10" fill="#F6F6F3"/>
+    <rect x="130" y="88" width="140" height="42" rx="10" fill="#F6F6F3"/>
+    <rect x="228" y="88" width="42" height="126" rx="10" fill="#F6F6F3"/>
+    <rect x="130" y="172" width="140" height="42" rx="10" fill="#F6F6F3"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="header-inner">
     <a class="logo" href="#" data-view="check" aria-label="PEBMedia Protect, úvod">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 5 7.4v7.9c0 6.7 4.6 12.1 11 13.7 6.4-1.6 11-7 11-13.7V7.4L16 3Z" fill="var(--brand)"/><path d="m11 16.2 3.4 3.4 6.8-6.9" fill="none" stroke="var(--on-brand)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>PEBMedia <b>Protect</b></span>
+      <span class="logo-mark"><svg viewBox="0 0 400 400"><use href="#logoMarkP"/></svg></span>
+      <span>PEBMedia</span>
+      <span class="logo-tag">Protect</span>
     </a>
-    <nav class="nav" aria-label="Hlavní">
+    <nav class="main-nav" aria-label="Hlavní">
       <a href="#" data-view="check" id="nav-check" aria-current="page">Kontrola</a>
       <a href="#pomoc" data-view="help" id="nav-help">Už se to stalo</a>
     </nav>
   </div>
 </header>
 
-<main>
+<main class="container">
   <!-- ========== KONTROLA ========== -->
-  <div id="view-check" class="page">
+  <div id="view-check">
 
-    <section id="ask">
+    <section id="ask" class="hero">
+      <p class="eyebrow"><span class="dot"></span>Bezplatná kontrola podvodů</p>
       <h1>Je to podvod?</h1>
-      <p class="lead">Vložte zprávu, která vám přišla. Projdeme ji za vás a řekneme, na co si dát pozor.</p>
+      <p class="hero-text">Vložte zprávu, která vám přišla. Projdeme ji za vás a ukážeme, na co si dát pozor.</p>
 
       <div class="composer" id="drop">
+        <span class="corner tl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>
         <label class="sr" for="msg">Text zprávy</label>
         <textarea id="msg" rows="5" placeholder="Sem vložte celou zprávu i s odkazem" spellcheck="false"></textarea>
 
@@ -42,93 +54,126 @@
           <img id="ocr-img" alt="">
           <div class="ocr-body">
             <p id="ocr-status">Čtu text z obrázku</p>
-            <div class="bar"><span id="ocr-bar"></span></div>
+            <div class="progress"><i id="ocr-bar"></i></div>
           </div>
         </div>
         <p class="ocr-note" id="ocr-note" hidden></p>
 
         <div class="composer-bar">
           <input type="file" id="file" accept="image/*" hidden>
-          <button type="button" class="btn-plain" id="pick">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.6-2.2h6.8L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12.8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          <button type="button" class="btn-ghost" id="pick">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.6-2.2h6.8L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="12.8" r="3.4"/></svg>
             Vložit screenshot
           </button>
-          <button type="button" class="btn" id="go">Zkontrolovat</button>
+          <button type="button" class="btn btn-primary" id="go">Zkontrolovat <span class="arrow" aria-hidden="true">→</span></button>
         </div>
       </div>
 
-      <p class="fine">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8V6a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2 0h4V6a2 2 0 1 0-4 0v2Z" fill="currentColor"/></svg>
-        Zpráva nikam neodchází. Kontrola běží jen ve vašem telefonu nebo počítači.
-      </p>
+      <ul class="facts">
+        <li><span class="dot"></span>Zpráva nikam neodchází</li>
+        <li><span class="dot"></span>Zdarma a bez registrace</li>
+        <li><span class="dot"></span>Bez reklam</li>
+      </ul>
 
-      <p class="try">Nemáte po ruce žádnou? Zkuste ukázku:
-        <button type="button" class="link" data-ex="posta">SMS o balíku</button>,
-        <button type="button" class="link" data-ex="mami">Ahoj mami</button>,
-        <button type="button" class="link" data-ex="bank">falešný bankéř</button>,
-        <button type="button" class="link" data-ex="vinted">prodej na bazaru</button>
-      </p>
+      <div class="try">
+        <p class="mono-label">Vyzkoušejte na ukázce</p>
+        <div class="try-row">
+          <button type="button" class="chip" data-ex="posta">SMS o balíku</button>
+          <button type="button" class="chip" data-ex="mami">Ahoj mami</button>
+          <button type="button" class="chip" data-ex="bank">Falešný bankéř</button>
+          <button type="button" class="chip" data-ex="vinted">Prodej na bazaru</button>
+        </div>
+      </div>
     </section>
 
     <section id="result" hidden aria-live="polite"></section>
   </div>
 
   <!-- ========== POMOC ========== -->
-  <div id="view-help" class="page" hidden>
-    <h1>Už se to stalo?</h1>
-    <p class="lead">Nepanikařte. Spoustu věcí jde zachránit, když budete jednat rychle.</p>
+  <div id="view-help" hidden>
+    <section class="hero hero-sm">
+      <p class="eyebrow"><span class="dot dot-red"></span>Pomoc po podvodu</p>
+      <h1>Už se to stalo?</h1>
+      <p class="hero-text">Nepanikařte. Spoustu věcí jde zachránit, když budete jednat rychle.</p>
+    </section>
 
     <div class="alarm">
+      <p class="mono-label">Nejdřív tohle</p>
       <p><b>Jde o peníze nebo o kartu?</b> Hned volejte své bance na číslo ze zadní strany karty. Kartu zablokujete i sami v aplikaci banky.</p>
-      <p>Když vám někdo vyhrožuje nebo jste v ohrožení, volejte <b>158</b>.</p>
+      <p>Když vám někdo vyhrožuje nebo jste v ohrožení, volejte <b class="big-num">158</b></p>
     </div>
 
-    <h2>Co se vám stalo?</h2>
-    <div class="acc" id="scenarios"></div>
+    <section class="block">
+      <p class="mono-label">Postup</p>
+      <h2>Co se vám stalo?</h2>
+      <div class="acc" id="scenarios"></div>
+    </section>
 
-    <h2>Podklady pro policii</h2>
-    <p class="sub">Vyplňte, co víte. Poskládáme z toho přehledný text, který si zkopírujete a vezmete s sebou na policii. Nic se neodesílá.</p>
+    <section class="block">
+      <p class="mono-label">Oznámení</p>
+      <h2>Podklady pro policii</h2>
+      <p class="block-text">Vyplňte, co víte. Poskládáme z toho přehledný text, který si zkopírujete a vezmete s sebou na policii. Nic se neodesílá.</p>
 
-    <form class="report" id="report" novalidate>
-      <div class="cols">
-        <div class="field"><label for="r-when">Kdy se to stalo</label><input id="r-when" type="text" placeholder="např. 12. 10. kolem 14:30"></div>
-        <div class="field"><label for="r-channel">Jak vás kontaktovali</label>
-          <select id="r-channel"><option>SMS</option><option>E-mail</option><option>Telefonát</option><option>WhatsApp nebo jiný chat</option><option>Sociální síť</option><option>Inzerát nebo bazar</option><option>Jinak</option></select></div>
-        <div class="field"><label for="r-from">Číslo nebo adresa podvodníka</label><input id="r-from" type="text"></div>
-        <div class="field"><label for="r-link">Odkaz ze zprávy</label><input id="r-link" type="text"></div>
-        <div class="field"><label for="r-amount">Kolik jste ztratili</label><input id="r-amount" type="text" inputmode="decimal" placeholder="např. 12 500 Kč"></div>
-        <div class="field"><label for="r-account">Kam peníze odešly</label><input id="r-account" type="text" placeholder="číslo účtu, pokud ho znáte"></div>
-      </div>
-      <fieldset class="checks">
-        <legend>Co jste udělali</legend>
-        <label><input type="checkbox" value="Otevřel(a) jsem odkaz ze zprávy."> otevřel(a) jsem odkaz</label>
-        <label><input type="checkbox" value="Zadal(a) jsem přihlašovací údaje nebo heslo."> zadal(a) jsem heslo</label>
-        <label><input type="checkbox" value="Zadal(a) jsem údaje z platební karty."> zadal(a) jsem údaje z karty</label>
-        <label><input type="checkbox" value="Odeslal(a) jsem peníze."> poslal(a) jsem peníze</label>
-        <label><input type="checkbox" value="Nainstaloval(a) jsem aplikaci nebo umožnil(a) vzdálený přístup."> nainstaloval(a) jsem aplikaci</label>
-        <label><input type="checkbox" value="Sdělil(a) jsem kód z SMS."> řekl(a) jsem kód z SMS</label>
-      </fieldset>
-      <div class="field"><label for="r-desc">Co se stalo, vlastními slovy</label><textarea id="r-desc" rows="4"></textarea></div>
-      <div class="field"><label for="r-msg">Text podvodné zprávy</label><textarea id="r-msg" rows="3"></textarea></div>
-      <div><button type="submit" class="btn">Připravit podklady</button></div>
-
-      <div class="out" id="report-out" hidden>
-        <pre id="report-text"></pre>
-        <div class="row">
-          <button type="button" class="btn btn-soft" id="copy">Zkopírovat</button>
-          <span class="copied" id="copy-msg" role="status"></span>
+      <form class="card report" id="report" novalidate>
+        <div class="cols">
+          <div class="field"><label for="r-when">Kdy se to stalo</label><input id="r-when" type="text" placeholder="např. 12. 10. kolem 14:30"></div>
+          <div class="field"><label for="r-channel">Jak vás kontaktovali</label>
+            <select id="r-channel"><option>SMS</option><option>E-mail</option><option>Telefonát</option><option>WhatsApp nebo jiný chat</option><option>Sociální síť</option><option>Inzerát nebo bazar</option><option>Jinak</option></select></div>
+          <div class="field"><label for="r-from">Číslo nebo adresa podvodníka</label><input id="r-from" type="text"></div>
+          <div class="field"><label for="r-link">Odkaz ze zprávy</label><input id="r-link" type="text"></div>
+          <div class="field"><label for="r-amount">Kolik jste ztratili</label><input id="r-amount" type="text" inputmode="decimal" placeholder="např. 12 500 Kč"></div>
+          <div class="field"><label for="r-account">Kam peníze odešly</label><input id="r-account" type="text" placeholder="číslo účtu, pokud ho znáte"></div>
         </div>
-        <p class="sub">Oznámení podáte na kterékoli služebně Policie ČR. Kontakty: <a href="https://policie.gov.cz/kyberkriminalita/kontakty" target="_blank" rel="noopener">policie.gov.cz</a>. Vezměte s sebou i screenshoty a výpis z účtu.</p>
-      </div>
-    </form>
+        <fieldset class="checks">
+          <legend>Co jste udělali</legend>
+          <label class="check"><input type="checkbox" value="Otevřel(a) jsem odkaz ze zprávy."><span>Otevřel(a) jsem odkaz</span></label>
+          <label class="check"><input type="checkbox" value="Zadal(a) jsem přihlašovací údaje nebo heslo."><span>Zadal(a) jsem heslo</span></label>
+          <label class="check"><input type="checkbox" value="Zadal(a) jsem údaje z platební karty."><span>Zadal(a) jsem údaje z karty</span></label>
+          <label class="check"><input type="checkbox" value="Odeslal(a) jsem peníze."><span>Poslal(a) jsem peníze</span></label>
+          <label class="check"><input type="checkbox" value="Nainstaloval(a) jsem aplikaci nebo umožnil(a) vzdálený přístup."><span>Nainstaloval(a) jsem aplikaci</span></label>
+          <label class="check"><input type="checkbox" value="Sdělil(a) jsem kód z SMS."><span>Řekl(a) jsem kód z SMS</span></label>
+        </fieldset>
+        <div class="field"><label for="r-desc">Co se stalo, vlastními slovy</label><textarea id="r-desc" rows="4"></textarea></div>
+        <div class="field"><label for="r-msg">Text podvodné zprávy</label><textarea id="r-msg" rows="3"></textarea></div>
+        <div><button type="submit" class="btn btn-primary">Připravit podklady <span class="arrow" aria-hidden="true">→</span></button></div>
+
+        <div class="out" id="report-out" hidden>
+          <pre id="report-text"></pre>
+          <div class="row">
+            <button type="button" class="btn btn-secondary" id="copy">Zkopírovat text</button>
+            <span class="copied" id="copy-msg" role="status"></span>
+          </div>
+          <p class="note">Oznámení podáte na kterékoli služebně Policie ČR. Kontakty najdete na <a href="https://policie.gov.cz/kyberkriminalita/kontakty" target="_blank" rel="noopener">policie.gov.cz</a>. Vezměte s sebou i screenshoty a výpis z účtu.</p>
+        </div>
+      </form>
+    </section>
   </div>
 </main>
 
-<footer class="foot">
-  <div class="foot-in">
-    <p>PEBMedia Protect je zdarma a bez reklam. Dělá ho studio <a href="https://pebmedia.cz" target="_blank" rel="noopener">PEBMedia</a>, aby méně lidí naletělo podvodníkům.</p>
-    <p>Kontrola je orientační. Žádný program nepozná všechny podvody, takže když po vás někdo chce peníze nebo údaje, vždycky si to ověřte jinou cestou.</p>
-    <p>Chcete se podvody naučit poznat sami? Máme e-book <a href="https://pebmedia.cz/obchod" target="_blank" rel="noopener">Nenech se nachytat</a>.</p>
+<footer class="site-footer">
+  <div class="container footer-top">
+    <div class="footer-brand">
+      <a class="logo" href="https://pebmedia.cz" target="_blank" rel="noopener">
+        <span class="logo-mark"><svg viewBox="0 0 400 400"><use href="#logoMarkP"/></svg></span>
+        <span>PEBMedia</span>
+      </a>
+      <p>Protect je zdarma a bez reklam. Děláme ho, aby méně lidí naletělo podvodníkům.</p>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col">
+        <p class="footer-col-title">Naučte se to</p>
+        <a href="https://pebmedia.cz/obchod" target="_blank" rel="noopener">E-book Nenech se nachytat</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Užitečné odkazy</p>
+        <a href="https://policie.gov.cz/kyberkriminalita/pomoc-v-nouzi-4" target="_blank" rel="noopener">Policie ČR: pomoc v nouzi</a>
+        <a href="https://nukib.gov.cz" target="_blank" rel="noopener">NÚKIB</a>
+      </div>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>Kontrola je orientační. Žádný program nepozná všechny podvody, takže když po vás někdo chce peníze nebo údaje, vždycky si to ověřte jinou cestou.</span>
+    <span>© 2026 PEBMedia · pebmedia.cz</span>
   </div>
 </footer>
 <!--/BODY-->

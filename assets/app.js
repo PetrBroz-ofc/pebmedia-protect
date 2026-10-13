@@ -162,57 +162,63 @@
     var v = VERDICT[ev.level];
     var reasons = buildReasons(a);
 
-    var h = '<p class="back"><button type="button" class="link" data-act="again">Zkontrolovat jinou zprávu</button></p>';
-    h += '<div class="verdict"><span class="pill ' + ev.level + '">' + v.pill + '</span><h1>' + v.title + '</h1><p>' + v.say + '</p></div>';
+    var h = '<p class="back"><button type="button" class="link" data-act="again">← Zkontrolovat jinou zprávu</button></p>';
 
-    h += '<p class="msg-label">Vaše zpráva</p><div class="bubble">' + bubbleHtml(a.text, reasons) + '</div>';
+    h += '<div class="verdict"><div class="verdict-top"><span class="mono-label">Výsledek kontroly</span><span class="risk ' + ev.level + '">' + v.pill + '</span></div>' +
+      '<h1>' + v.title + '</h1><p>' + v.say + '</p>' +
+      '<div class="meter ' + ev.level + '" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="meter-legend" aria-hidden="true"><span>Nízké</span><span>Zvýšené</span><span>Vysoké</span></div></div>';
+
+    if (ev.needHelp) {
+      h += '<div class="callout"><p>Už jste na něco klikli nebo něco zaplatili? Poradíme, co udělat hned teď.</p><button type="button" class="btn btn-primary" data-act="help">Co mám dělat <span class="arrow" aria-hidden="true">→</span></button></div>';
+    }
+
+    h += '<section class="block"><p class="mono-label">Vaše zpráva</p><div class="specimen-wrap"><span class="corner tl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>' +
+      '<div class="specimen">' + bubbleHtml(a.text, reasons) + '</div></div>';
 
     if (reasons.length) {
       h += '<ol class="reasons">' + reasons.map(function (r) {
         var extra = '';
         if (r.url && (r.url.foreign || r.url.summary.kind === 'fake')) {
           extra += '<span class="domain">' + domainHtml(r.url) + '</span>';
-          if (r.url.foreign) extra += '<p>Počítač tu adresu čte jako <b style="display:inline;font-family:var(--mono);font-size:.9em">' + esc(r.url.ascii) + '</b>.</p>';
+          if (r.url.foreign) extra += '<p class="domain-note">Počítač tu adresu ve skutečnosti čte jako <code>' + esc(r.url.ascii) + '</code></p>';
         }
         if (r.more && r.more.length) {
           extra += '<ul class="more">' + r.more.map(function (f) { return '<li>' + esc(f.title) + '</li>'; }).join('') + '</ul>';
         }
-        return '<li class="reason ' + r.sev + '"><span class="num">' + r.n + '</span><div><b>' + esc(r.title) + '</b><p>' + esc(r.detail) + '</p>' + extra + '</div></li>';
+        return '<li class="reason ' + r.sev + '"><span class="num">' + (r.n < 10 ? '0' : '') + r.n + '</span><div><h3>' + esc(r.title) + '</h3><p>' + esc(r.detail) + '</p>' + extra + '</div></li>';
       }).join('') + '</ol>';
     } else {
       h += '<p class="none">Ve zprávě jsme nenašli žádné typické triky podvodníků.</p>';
     }
+    h += '</section>';
 
-    if (ev.needHelp) {
-      h += '<div class="callout"><p>Už jste na něco klikli nebo něco zaplatili? Poradíme, co udělat hned teď.</p><button type="button" class="btn" data-act="help">Co mám dělat</button></div>';
-    }
-
-    // Otázky: odpovězené shrnuté, aktuální jedna, zbytek čeká
+    // Otázky ve stylu kalkulačky: odpovězené shrnuté, aktuální jedna
     var qs = A.questionsFor(a);
-    h += '<div class="box"><h2>Pomozte nám to upřesnit</h2>';
-    var current = null;
-    qs.forEach(function (q) {
-      var ans = state.answers[q.id];
-      if (ans) {
-        var opt = q.options.filter(function (o) { return o.v === ans; })[0];
-        h += '<div class="answered"><span class="q">' + esc(q.text) + '</span><span class="a">' + esc(opt.label) + '</span>' +
+    var done = qs.filter(function (q) { return state.answers[q.id]; }).length;
+    var current = qs.filter(function (q) { return !state.answers[q.id]; })[0];
+    h += '<section class="block"><p class="mono-label">Upřesnění</p><h2>Pomozte nám to upřesnit</h2><div class="card quiz">' +
+      '<div class="quiz-head"><span class="mono-label">' + (current ? 'Otázka ' + (done + 1) + ' z ' + qs.length : 'Hotovo') + '</span>' +
+      '<div class="progress"><i style="width:' + Math.round((done / qs.length) * 100) + '%"></i></div></div>';
+    if (done) {
+      h += '<ul class="answered">' + qs.filter(function (q) { return state.answers[q.id]; }).map(function (q) {
+        var opt = q.options.filter(function (o) { return o.v === state.answers[q.id]; })[0];
+        return '<li><span class="q">' + esc(q.text) + '</span><span class="a">' + esc(opt.label) + '</span>' +
           '<button type="button" class="link" data-undo="' + q.id + '">změnit</button>' +
-          (ev.notes[q.id] ? '<p class="note">' + esc(ev.notes[q.id]) + '</p>' : '') + '</div>';
-      } else if (!current) {
-        current = q;
-      }
-    });
+          (ev.notes[q.id] ? '<p class="note">' + esc(ev.notes[q.id]) + '</p>' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
     if (current) {
-      h += '<div class="ask-q"><p>' + esc(current.text) + '</p><div class="opts">' + current.options.map(function (o) {
+      h += '<div class="quiz-body"><p class="quiz-q">' + esc(current.text) + '</p><div class="opts">' + current.options.map(function (o) {
         return '<button type="button" class="opt" data-q="' + current.id + '" data-v="' + o.v + '">' + esc(o.label) + '</button>';
       }).join('') + '</div></div>';
     } else {
-      h += '<p class="done-q">Díky, hodnocení výše už počítá s vašimi odpověďmi.</p>';
+      h += '<p class="quiz-done">Díky. Výsledek nahoře už počítá s vašimi odpověďmi.</p>';
     }
-    h += '</div>';
+    h += '</div></section>';
 
-    h += '<div class="box"><h2>Co dělat teď</h2><ol class="steps">' + NEXT[ev.level].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>';
-    h += '<p class="small">Hodnocení je orientační. Vychází ze známých triků podvodníků, úplně nový podvod nemusí poznat.</p>';
+    h += '<section class="block"><p class="mono-label">Doporučení</p><h2>Co dělat teď</h2><ol class="steps">' + NEXT[ev.level].map(function (t) { return '<li><span>' + esc(t) + '</span></li>'; }).join('') + '</ol></section>';
+    h += '<p class="disclaimer">Hodnocení je orientační. Vychází ze známých triků podvodníků, úplně nový podvod nemusí poznat.</p>';
 
     var box = $('result');
     box.innerHTML = h;
@@ -407,7 +413,7 @@
 
   $('scenarios').innerHTML = SCENARIOS.map(function (s) {
     return '<details><summary>' + esc(s.title) + '</summary><div class="inner"><ol>' +
-      s.steps.map(function (st) { return '<li><b>' + esc(st[0]) + '</b><span>' + esc(st[1]) + '</span></li>'; }).join('') +
+      s.steps.map(function (st) { return '<li><div><b>' + esc(st[0]) + '</b><span>' + esc(st[1]) + '</span></div></li>'; }).join('') +
       '</ol>' + (s.tip ? '<p class="tip">' + esc(s.tip) + '</p>' : '') + '</div></details>';
   }).join('');
   // Vždy otevřená jen jedna položka
