@@ -471,6 +471,40 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 .send .way-link { padding-top: 4px; }
 .small-note { font-size: 13px; color: var(--ink-faint); }
 
+
+/* ---------------------------------- Přehodnocení ---------------------------------- */
+.quiz-head .live { margin-left: auto; font-size: 10.5px; padding: 3px 9px; }
+.reeval { margin: 4px 22px 22px; padding: 18px 20px; border-radius: var(--radius-m); background: var(--bg); border: 1px solid var(--border); display: grid; gap: 8px; animation: reeval-in .5s var(--ease); }
+.reeval.high { background: var(--danger-tint); border-color: rgba(178, 59, 59, 0.22); }
+.reeval.mid { background: var(--warn-tint); border-color: rgba(143, 91, 0, 0.2); }
+.reeval.low { background: var(--accent-tint); border-color: rgba(11, 110, 99, 0.2); }
+.reeval-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.reeval .is-old { opacity: .55; text-decoration: line-through; }
+.reeval-arrow { font-size: 18px; color: var(--ink-soft); }
+.reeval-title { font-family: var(--font-display); font-weight: 600; font-size: 21px; letter-spacing: -0.01em; }
+.reeval-text { color: var(--ink-soft); font-size: 15px; }
+.reeval .link { justify-self: start; }
+@keyframes reeval-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.verdict.is-updated { animation: verdict-flash 1.2s var(--ease); }
+@keyframes verdict-flash { 0% { box-shadow: 0 0 0 0 rgba(126, 224, 195, 0.7); } 100% { box-shadow: 0 0 0 14px rgba(126, 224, 195, 0); } }
+
+/* E-book za výsledkem */
+.ebook-card {
+  margin-top: 40px; display: flex; gap: 20px; align-items: center; padding: 18px 20px 18px 18px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-l);
+  color: var(--ink); text-decoration: none; transition: border-color .2s var(--ease), transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.ebook-card:hover { color: var(--ink); border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-m); }
+.ebook-card img { flex: none; width: 88px; height: auto; aspect-ratio: 900 / 1277; object-fit: cover; border-radius: 3px 6px 6px 3px; box-shadow: 0 10px 20px rgba(20, 24, 27, 0.25); transform: rotate(-3deg); transition: transform .3s var(--ease); }
+.ebook-card:hover img { transform: rotate(0deg); }
+.ebook-card-text { display: grid; gap: 4px; min-width: 0; }
+.ebook-card-text b { font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 1.25; }
+.ebook-card-text > span:not(.mono-label):not(.ebook-card-cta) { color: var(--ink-soft); font-size: 14.5px; }
+.ebook-card-cta { color: var(--accent); font-weight: 600; font-size: 14.5px; margin-top: 4px; }
+.ebook-card .arrow { display: inline-block; transition: transform .2s var(--ease); }
+.ebook-card:hover .arrow { transform: translateX(3px); }
+@media (max-width: 440px) { .ebook-card { align-items: flex-start; gap: 14px; } .ebook-card img { width: 68px; } }
+
 /* ---------------------------------- Patička ---------------------------------- */
 /* Tmavá patička: černá z palety PEBMedia, teal jen jako akcent. */
 .site-footer {
@@ -514,12 +548,11 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 }
 .footer-book:hover { background: rgba(246, 246, 243, 0.1); border-color: rgba(126, 224, 195, 0.4); color: var(--f-ink); transform: translateY(-2px); }
 .footer-book-cover {
-  flex: none; width: 72px; height: 96px; border-radius: 4px 8px 8px 4px; padding: 8px 7px;
-  background: linear-gradient(160deg, #0E8173, var(--accent) 55%, var(--accent-ink));
-  box-shadow: inset 3px 0 0 rgba(0, 0, 0, 0.18), 0 8px 18px rgba(0, 0, 0, 0.35);
-  display: flex; align-items: flex-end;
+  flex: none; width: 72px; height: auto; aspect-ratio: 900 / 1277; object-fit: cover; border-radius: 3px 6px 6px 3px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transform: rotate(-3deg); transition: transform .3s var(--ease);
 }
-.footer-book-cover span { font-family: var(--font-display); font-weight: 700; font-size: 10px; line-height: 1.15; color: #fff; }
+.footer-book:hover .footer-book-cover { transform: rotate(0deg) scale(1.03); }
 .footer-book-text { display: grid; gap: 2px; min-width: 0; }
 .footer-book-text .footer-col-title { margin-bottom: 2px; }
 .footer-book-text b { font-family: var(--font-display); font-weight: 600; font-size: 16.5px; line-height: 1.25; }

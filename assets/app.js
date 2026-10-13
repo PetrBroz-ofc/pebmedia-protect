@@ -6,6 +6,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
   var state = { analysis: null, answers: {} };
+  var EBOOK_URL = 'https://pebmedia.cz/obchod/ebooky/';
+  var EBOOK_COVER = 'assets/img/ebook-nenech-se-nachytat.webp';
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -49,6 +51,7 @@
     state.analysis = A.analyze(text);
     state.answers = {};
     state.reportChoice = null;
+    state.lastLevel = null;
     $('ask').hidden = true;
     renderResult();
     window.scrollTo(0, 0);
@@ -166,7 +169,19 @@
 
     var h = '<p class="back"><button type="button" class="link" data-act="again">← Zkontrolovat jinou zprávu</button></p>';
 
-    h += '<div class="verdict"><div class="verdict-top"><span class="mono-label">Výsledek kontroly</span><span class="risk ' + ev.level + '">' + v.pill + '</span></div>' +
+    var base = A.evaluate(a, {});
+    var answeredAny = Object.keys(state.answers).length > 0;
+    var changed = state.lastLevel && state.lastLevel !== ev.level;
+    state.lastLevel = ev.level;
+    if (answeredAny && ev.level !== base.level) {
+      v = {
+        pill: v.pill,
+        title: ev.level === 'low' ? 'Podle vašich odpovědí to vypadá v pořádku' : ev.level === 'mid' ? 'Pořád tu něco nesedí' : 'Teď už je to skoro jisté: je to podvod',
+        say: ev.level === 'low' ? 'Riziko jsme snížili podle toho, co jste odpověděli. Peníze ani údaje ale nikomu neposílejte, dokud si to sami neověříte.' : v.say
+      };
+    }
+    h += '<div class="verdict' + (changed ? ' is-updated' : '') + '" id="verdict"><div class="verdict-top"><span class="mono-label">' +
+      (answeredAny ? 'Přehodnoceno podle vašich odpovědí' : 'Výsledek kontroly') + '</span><span class="risk ' + ev.level + '">' + v.pill + '</span></div>' +
       '<h1>' + v.title + '</h1><p>' + v.say + '</p>' +
       '<div class="meter ' + ev.level + '" aria-hidden="true"><i></i><i></i><i></i></div>' +
       '<div class="meter-legend" aria-hidden="true"><span>Nízké</span><span>Zvýšené</span><span>Vysoké</span></div></div>';
@@ -213,7 +228,8 @@
     var current = qs.filter(function (q) { return !state.answers[q.id]; })[0];
     h += '<section class="block"><p class="mono-label">Upřesnění</p><h2>Pomozte nám to upřesnit</h2><div class="card quiz">' +
       '<div class="quiz-head"><span class="mono-label">' + (current ? 'Otázka ' + (done + 1) + ' z ' + qs.length : 'Hotovo') + '</span>' +
-      '<div class="progress"><i style="width:' + Math.round((done / qs.length) * 100) + '%"></i></div></div>';
+      '<div class="progress"><i style="width:' + Math.round((done / qs.length) * 100) + '%"></i></div>' +
+      (done ? '<span class="live risk ' + ev.level + '">' + v.pill + '</span>' : '') + '</div>';
     if (done) {
       h += '<ul class="answered">' + qs.filter(function (q) { return state.answers[q.id]; }).map(function (q) {
         var opt = q.options.filter(function (o) { return o.v === state.answers[q.id]; })[0];
@@ -227,11 +243,30 @@
         return '<button type="button" class="opt" data-q="' + current.id + '" data-v="' + o.v + '">' + esc(o.label) + '</button>';
       }).join('') + '</div></div>';
     } else {
-      h += '<p class="quiz-done">Díky. Výsledek nahoře už počítá s tím, co jste odpověděli.</p>';
+      var order = { low: 0, mid: 1, high: 2 };
+      var dir = order[ev.level] - order[base.level];
+      var RE = {
+        up: 'Vaše odpovědi riziko zvýšily. Teď už to vypadá vážněji než na první pohled, takže buďte hodně opatrní.',
+        down: 'Podle vašich odpovědí to vypadá líp, než se zdálo. Pořád ale platí, že peníze ani údaje nikomu neposílejte, dokud si to neověříte.',
+        same: ev.level === 'low' ? 'Vaše odpovědi hodnocení potvrdily. Nic podezřelého jsme nenašli.' : 'Vaše odpovědi hodnocení potvrdily. Na tuhle zprávu raději nereagujte.'
+      };
+      h += '<div class="reeval ' + ev.level + '"><p class="mono-label">Přehodnoceno</p>' +
+        '<div class="reeval-row">' +
+          (dir !== 0 ? '<span class="risk ' + base.level + ' is-old">' + VERDICT[base.level].pill + '</span><span class="reeval-arrow" aria-hidden="true">→</span>' : '') +
+          '<span class="risk ' + ev.level + '">' + v.pill + '</span></div>' +
+        '<p class="reeval-title">' + esc(v.title) + '</p>' +
+        '<p class="reeval-text">' + esc(dir > 0 ? RE.up : dir < 0 ? RE.down : RE.same) + '</p>' +
+        '<button type="button" class="link" data-act="to-verdict">Zobrazit celé hodnocení nahoře</button></div>';
     }
     h += '</div></section>';
 
     h += '<section class="block"><p class="mono-label">Doporučení</p><h2>Co dělat teď</h2><ol class="steps">' + NEXT[ev.level].map(function (t) { return '<li><span>' + esc(t) + '</span></li>'; }).join('') + '</ol></section>';
+    h += '<a class="ebook-card" href="' + EBOOK_URL + '" target="_blank" rel="noopener">' +
+      '<img src="' + EBOOK_COVER + '" alt="Obálka e-booku Nenech se nachytat" width="96" height="136" loading="lazy">' +
+      '<span class="ebook-card-text"><span class="mono-label">E-book od PEBMedia</span>' +
+      '<b>Chcete podvody poznat dřív, než vám přijdou?</b>' +
+      '<span>Nenech se nachytat vysvětluje nejčastější triky podvodníků srozumitelně a s příklady. Hodí se pro celou rodinu.</span>' +
+      '<span class="ebook-card-cta">Prohlédnout e-book <span class="arrow" aria-hidden="true">→</span></span></span></a>';
     h += '<p class="disclaimer">Hodnocení je orientační. Vychází ze známých triků podvodníků, úplně nový podvod nemusí poznat.</p>';
 
     var box = $('result');
@@ -241,6 +276,8 @@
     box.querySelector('[data-act="again"]').addEventListener('click', function () { resetCheck(); $('msg').focus(); window.scrollTo(0, 0); });
     var hb = box.querySelector('[data-act="help"]');
     if (hb) hb.addEventListener('click', function () { showView('help'); });
+    var tv = box.querySelector('[data-act="to-verdict"]');
+    if (tv) tv.addEventListener('click', function () { $('verdict').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     var ry = box.querySelector('[data-act="report-yes"]');
     if (ry) ry.addEventListener('click', function () { openPolice(true); });
     var rn = box.querySelector('[data-act="report-no"]');
@@ -251,6 +288,8 @@
       b.addEventListener('click', function () {
         state.answers[b.getAttribute('data-q')] = b.getAttribute('data-v');
         rerender();
+        var re = document.querySelector('.reeval');
+        if (re) re.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
     });
     Array.prototype.forEach.call(box.querySelectorAll('[data-undo]'), function (b) {

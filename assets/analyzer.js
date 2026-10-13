@@ -475,7 +475,7 @@
       options: [
         { v: 'no', label: 'Ještě ne', delta: 20, note: 'Zavolejte na číslo, které máte uložené. Pokud to opravdu píše vaše dítě nebo vnouče, hned se to vysvětlí.' },
         { v: 'yes-other', label: 'Ano, o ničem neví', delta: 40, note: 'Pak je to jasné: někdo se za vašeho blízkého vydává. Nic neposílejte a číslo zablokujte.' },
-        { v: 'yes-ok', label: 'Ano, potvrdil to', delta: -15 }
+        { v: 'yes-ok', label: 'Ano, potvrdil to', delta: -45, clears: 'family', note: 'Pokud to potvrdil hlas, který znáte, na staré číslo, je to v pořádku. Peníze ale posílejte jen na účet, který si s ním ověříte.' }
       ]
     },
     {
@@ -554,7 +554,13 @@
       score += u.score;
       if (u.worst === 'high') anyHigh = true;
     });
-    if (a.textFindings.some(function (f) { return f.sev === 'high'; })) anyHigh = true;
+    // Odpověď může vyvrátit konkrétní varování (např. člen rodiny se ozval na starém čísle)
+    var cleared = {};
+    questionsFor(a).forEach(function (q) {
+      var opt = q.options.filter(function (o) { return o.v === answers[q.id]; })[0];
+      if (opt && opt.clears) cleared[opt.clears] = true;
+    });
+    if (a.textFindings.some(function (f) { return f.sev === 'high' && !cleared[f.rule]; })) anyHigh = true;
 
     var notes = {};
     var needHelp = false;
