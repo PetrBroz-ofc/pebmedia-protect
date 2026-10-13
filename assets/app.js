@@ -35,7 +35,7 @@
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var v = a.getAttribute('data-view');
-      if (v === 'check' && a.classList.contains('logo')) resetCheck();
+      if (v === 'check' && (a.classList.contains('logo') || a.hasAttribute('data-top'))) resetCheck();
       showView(v);
     });
   });
