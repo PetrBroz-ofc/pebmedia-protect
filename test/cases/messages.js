@@ -214,5 +214,19 @@ module.exports = [
     input: 'Faktura za vodné 1 240 Kč, splatnost 25. 10. Zaplatit můžete QR platbou v příloze.' },
   { id: 'legit-friend-paypal', expect: 'notHigh',
     why: 'Kamarád chce peníze za lístek přes paypal.me. Zvýšené je přijatelné, vysoké ne.',
-    input: 'Pošli mi prosím 200 Kč za lístek přes https://paypal.me/jannovak' }
+    input: 'Pošli mi prosím 200 Kč za lístek přes https://paypal.me/jannovak' },
+
+  // ---------- Doplňky k novým funkcím (13. 10. 2026) ----------
+  { id: 'scam-tax-card', expect: 'high', codes: ['credentials', 'refund'],
+    why: 'Přeplatek daně vyplácený přes údaje platební karty na neoficiálním odkazu.',
+    input: 'Finanční správa: Máte nárok na vrácení přeplatku daně 4 210 Kč. Pro výplatu vyplňte údaje platební karty: https://vraceni-dane.online/form' },
+  { id: 'scam-vignette-mention', expect: 'notLow', codes: ['vignette', 'brand-mention'],
+    why: 'Prodej dálniční známky přes web, který jen nese její jméno. Oficiálně se prodává na edalnice.cz.',
+    input: 'Kupte si dálniční známku na rok 2027 rychle a bez front: https://dalnicni-znamka-eshop.com' },
+  { id: 'legit-brand-mention-no-context', expect: 'low',
+    why: 'Samotná zmínka značky v adrese bez souvisejícího obsahu nic neznamená.',
+    input: 'https://dalnicni-znamka-eshop.com' },
+  { id: 'legit-card-info', expect: 'low',
+    why: 'Informace o kartě bez žádosti o údaje.',
+    input: 'Číslo vaší karty končí 1234. Platba 349 Kč proběhla v pořádku.' }
 ];

@@ -5,11 +5,20 @@ Text zprávy ani obrázek se neodesílají: analýza i čtení obrázků (OCR) b
 
 Výsledek je orientační odhad podle pravidel, ne záruka bezpečnosti.
 
+Co umí:
+
+* **Kontrola zprávy** (text nebo screenshot přes OCR), **odkazu** (rozbor skutečné domény, subdomény, cesty, punycode, zkracovačů a HTTPS, odkaz se nikdy neotevírá) a **e-mailu** (jméno proti adrese, bezplatné schránky, Reply-To, výsledek SPF/DKIM/DMARC jen pokud je ve vložených hlavičkách).
+* **Průvodce telefonátem**: otázky na bezpečný účet, instalaci aplikace, kódy a údaje, výsledek s postupem.
+* **Nouzový plán** po podvodu: kroky seřazené na „hned“, „během hodiny“ a „v dalších dnech“, bez opakování, se seznamem podkladů pro policii.
+* **Příprava oznámení** pro Policii ČR včetně průběhu události. Nic se neodesílá.
+* **Naučit se**: knihovna 12 typů podvodů s ukázkami a trénink na 8 zprávách.
+
 ## Struktura
 
 ```
 index.html                 stránka aplikace (kontrola, nahlášení pokusu, pomoc po podvodu, okno s oznámením)
 assets/analyzer.js         pravidla, rozbor odkazů, vyhodnocení, pomocné funkce pro OCR (bez závislostí)
+assets/guides.js           nouzový plán, průvodce telefonátem, trénink (čisté funkce a data, bez DOM)
 assets/report.js           sestavení textu oznámení pro Policii ČR (čistá funkce, bez DOM)
 assets/app.js              rozhraní, historie a tlačítko Zpět, OCR, formulář
 assets/style.css           vzhled podle design systému pebmedia.cz
@@ -39,6 +48,8 @@ Testy s `review: true` mají sporné očekávání a čekají na odborné posouz
 * Samotný název značky v adrese nesmí znamenat vysoké riziko. Vysoké riziko vyžaduje rizikovou strukturu adresy (napodobenina, subdoména, překlep, písmena z jiné abecedy, bezplatný hosting, riziková koncovka).
 * Odpovědi na doplňující otázky nesmí odstranit zásadní varovné signály. Hlídají to invarianty v `test/run.js`.
 * Nové pravidlo vždy doplňte testem podvodné i legitimní zprávy.
+* Ukázky v knihovně a tréninku hlídá `test/run.js`: podvod nesmí vyjít jako nízké riziko, zpráva v pořádku ano. Při změně ukázky zkontrolujte, že s ní analyzátor souhlasí.
+* U e-mailu nikdy netvrďte, že jsme ověřili SPF, DKIM nebo DMARC. Jen čteme, co zapsal server příjemce.
 
 ## Nasazení
 

@@ -111,7 +111,7 @@
       re: /\b(zasilk\w*|balik\w*|baliku|doruc\w*|kuryr\w*|sledovaci cislo|prepravc\w*|vyzvednout|vyzvednuti|nedorucen\w*|postovn\w*|adres\w* (je )?neuplna|neuplna adres\w*)\b/ },
     { id: 'credentials', w: 20, cat: 'credentials', title: 'Chce vaše údaje',
       detail: 'Pošta, banka ani úřad po vás přes odkaz nikdy nechtějí heslo, PIN, kartu ani kód z SMS.',
-      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualizuj\w* (udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod|nadiktuj\w*)\b/ },
+      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualizuj\w* (udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|(zadej\w*|zadat|vypln\w*|dopln\w*|potvrd\w*|uved\w*|sdel\w*|aktualizuj\w*) (\w+ ){0,2}(udaje|cislo) (z |o |ke |k )?((vasi|sve|platebni) )*kart[aeuy]|(zadej\w*|zadat|vypln\w*|dopln\w*|aktualizuj\w*) (\w+ ){0,2}platebni udaje|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod|nadiktuj\w*)\b/ },
     { id: 'bankstaff', w: 30, cat: 'bank', title: 'Scénář falešného bankéře',
       detail: 'Bezpečný účet neexistuje. Skutečná banka nikdy nechce, abyste peníze někam převáděli.',
       re: /\b(bezpecn\w* ucet|bezpecnostni\w* oddeleni\w*|podezrel\w* (transakc|platb|prihlas)\w*|vas ucet (je|byl) (ohrozen|napaden|zneuzit)\w*|prevedte (penize|uspory|prostredky)|prevest (penize|uspory|prostredky)|ochran\w* (vasich )?(uspor|penez))\b/ },
@@ -535,6 +535,9 @@
       brandCat: brand ? brand.cat : null,
       official: official,
       hosting: hosting,
+      secure: p.secure,
+      hadScheme: p.hadScheme,
+      subdomain: ascii.length > reg.length ? ascii.slice(0, ascii.length - reg.length - 1) : '',
       summary: summary,
       findings: findings,
       worst: worst,
@@ -749,7 +752,13 @@
     // Minimální úrovně z obsahu
     var floors = [];
     if (urlHigh) floors.push({ level: 'high', why: 'odkaz' });
-    ['bankstaff', 'remote', 'mixedscript'].forEach(function (k) { if (ids[k]) floors.push({ level: 'high', why: k }); });
+    ['bankstaff', 'remote', 'mixedscript', 'sender-high'].forEach(function (k) { if (ids[k]) floors.push({ level: 'high', why: k }); });
+    ['sender-mismatch', 'sender-inst-free', 'reply-to', 'auth-fail'].forEach(function (k) { if (ids[k]) floors.push({ level: 'mid', why: k }); });
+    // Odkaz nese jméno značky, ale nevede na její web, a zpráva mluví právě o její službě
+    // (zásilka a odkaz se jménem přepravce, dálniční známka a odkaz se jménem známky).
+    a.urls.forEach(function (u) {
+      if (u.summary && u.summary.kind === 'mention' && u.brandCat && a.cats[u.brandCat]) floors.push({ level: 'mid', why: 'znacka-v-kontextu' });
+    });
     a.combos.forEach(function (c) { floors.push({ level: c.floor, why: c.id, clearedBy: c.id === 'family-money' ? 'family' : null, clearedTo: c.answerFloor }); });
     var contentScore = Math.max(0, Math.min(100, score));
     var contentLevel = floors.reduce(function (l, f) { return maxLevel(l, f.level); }, levelOf(contentScore));
@@ -779,6 +788,101 @@
     var level = maxLevel(levelOf(score), minLevel);
     if (score < LEVEL_MIN[level]) score = LEVEL_MIN[level];
     return { score: score, level: level, notes: notes, needHelp: needHelp, floors: floors.map(function (f) { return f.why; }), cleared: cleared };
+  }
+
+  /* ---------- E-mail ---------- */
+
+  // Bezplatné schránky, kde si adresu založí kdokoli. Firma ani úřad z nich oficiálně nepíšou.
+  var FREE_MAIL = ['gmail.com', 'googlemail.com', 'seznam.cz', 'email.cz', 'post.cz', 'spoluzaci.cz', 'centrum.cz', 'atlas.cz', 'volny.cz',
+    'tiscali.cz', 'quick.cz', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'icloud.com', 'me.com',
+    'proton.me', 'protonmail.com', 'gmx.com', 'gmx.net', 'gmx.de', 'aol.com', 'mail.com', 'zoho.com', 'yandex.ru', 'mail.ru'];
+  // Slova, kterými se odesílatel vydává za instituci.
+  var INSTITUTION_RE = /\b(policie|banka|bank|bankovni|sporitelna|posta|urad|sprava|financni|exekut\w*|soud|ministerstv\w*|support|podpora|security|bezpecnost\w*|zakaznick\w*|helpdesk|administrator|it oddeleni)\b/;
+
+  function emailDomain(addr) {
+    var m = String(addr || '').trim().toLowerCase().match(/@([^\s>@]+)$/);
+    return m ? m[1].replace(/\.$/, '') : '';
+  }
+
+  // Přečte jen to, co je opravdu v hlavičkách. Ověření SPF, DKIM a DMARC neprovádíme,
+  // jen přebíráme výsledek, který zapsal server příjemce.
+  function parseHeaders(raw) {
+    var t = String(raw || '').replace(/\r?\n[ \t]+/g, ' ');
+    var get = function (name) { var m = t.match(new RegExp('^' + name + ':\\s*(.+)$', 'im')); return m ? m[1].trim() : ''; };
+    var auth = t.match(/^(ARC-)?Authentication-Results:\s*(.+)$/im);
+    var authLine = auth ? auth[2] : '';
+    var res = function (k) { var m = authLine.match(new RegExp('\\b' + k + '=(pass|fail|softfail|neutral|none|temperror|permerror|bestguesspass)', 'i')); return m ? m[1].toLowerCase() : ''; };
+    return { present: !!t.trim(), from: get('From'), replyTo: get('Reply-To'), returnPath: get('Return-Path'),
+      hasAuth: !!authLine, spf: res('spf'), dkim: res('dkim'), dmarc: res('dmarc') };
+  }
+
+  function analyzeEmail(e) {
+    e = e || {};
+    var fromName = String(e.fromName || '').trim();
+    var fromAddr = String(e.fromAddr || '').trim();
+    var subject = String(e.subject || '').trim();
+    var body = String(e.body || '').trim();
+    var head = parseHeaders(e.headers);
+    if (!fromAddr && head.from) {
+      var hm = head.from.match(/<([^>]+)>/) || head.from.match(/(\S+@\S+)/);
+      if (hm) fromAddr = hm[1];
+      if (!fromName) fromName = head.from.replace(/<[^>]*>/, '').replace(/"/g, '').trim();
+    }
+    var text = (subject ? 'Předmět: ' + subject + '\n\n' : '') + body;
+    var a = analyze(text);
+    a.email = { fromName: fromName, fromAddr: fromAddr, subject: subject, headers: head };
+    var dom = emailDomain(fromAddr);
+    var add = function (code, sev, w, title, detail) {
+      a.textFindings.push({ sev: sev, title: title, detail: detail, rule: code, code: code, spans: [] });
+      a.present[code] = true;
+      if (sev === 'high' && code.indexOf('sender-') === 0) a.present['sender-high'] = true;
+      a.textScore += w;
+    };
+
+    var domUrl = dom ? analyzeUrl('https://' + dom) : null;
+    var nameBrand = fromName ? matchBrand([{ text: skeleton(fromName).replace(/[^a-z0-9 ]+/g, ' ').trim().split(/\s+/).join('-'), sub: false }]) : null;
+    var freeMail = dom && FREE_MAIL.some(function (d) { return endsWithDomain(dom, d); });
+    var instName = fromName && INSTITUTION_RE.test(normKeep(fromName));
+
+    if (fromAddr && !dom) add('sender-invalid', 'mid', 15, 'Neplatná adresa odesílatele', 'Adresa odesílatele nevypadá jako skutečná e-mailová adresa.');
+    if (domUrl) {
+      domUrl.findings.filter(function (f) { return f.sev === 'high' || f.sev === 'mid'; }).forEach(function (f) {
+        add('sender-' + f.code, f.sev, f.sev === 'high' ? 40 : 15, 'Adresa odesílatele: ' + f.title.charAt(0).toLowerCase() + f.title.slice(1), f.detail);
+      });
+    }
+    if (nameBrand && dom && !isOfficial(nameBrand.brand, dom)) {
+      if (freeMail) {
+        add('sender-brand-free', 'high', 40, 'Jméno ' + nameBrand.brand.name + ', ale bezplatná schránka',
+          'Odesílatel se jmenuje ' + nameBrand.brand.name + ', ale píše z adresy ' + dom + ', kterou si založí kdokoli. ' + nameBrand.brand.name + ' takhle nepíše.');
+      } else if (!(domUrl && domUrl.summary && domUrl.summary.kind === 'fake')) {
+        add('sender-mismatch', 'mid', 20, 'Jméno odesílatele nesedí s adresou',
+          'Jméno uvádí ' + nameBrand.brand.name + ', ale adresa ' + dom + ' mezi ověřené adresy ' + nameBrand.brand.name + ' nepatří. Jméno odesílatele si může nastavit kdokoli.');
+      }
+    } else if (instName && freeMail) {
+      add('sender-inst-free', 'mid', 20, 'Instituce z bezplatné schránky',
+        'Jméno odesílatele působí úředně, ale adresa ' + dom + ' je bezplatná schránka. Úřady, banky ani policie z takových adres nepíšou.');
+    }
+
+    // Hlavičky: jen to, co v nich opravdu je
+    if (head.present) {
+      var replyDom = emailDomain((head.replyTo.match(/<([^>]+)>/) || [])[1] || head.replyTo);
+      if (replyDom && dom && registrable(replyDom) !== registrable(dom)) {
+        add('reply-to', 'mid', 15, 'Odpovědi míří jinam', 'V hlavičce Reply-To je adresa na ' + replyDom + '. Kdybyste odpověděli, zpráva by šla jinam než na ' + dom + '.');
+      }
+      if (head.hasAuth) {
+        var fails = ['spf', 'dkim', 'dmarc'].filter(function (k) { return ['fail', 'softfail', 'permerror'].indexOf(head[k]) !== -1; });
+        var listed = ['spf', 'dkim', 'dmarc'].filter(function (k) { return head[k]; }).map(function (k) { return k.toUpperCase() + ' ' + head[k]; }).join(', ');
+        if (fails.length) {
+          add('auth-fail', head.dmarc === 'fail' ? 'high' : 'mid', head.dmarc === 'fail' ? 40 : 15, 'Hlavičky uvádějí neúspěšné ověření odesílatele',
+            'Server, který zprávu přijal, zapsal: ' + listed + '. Zpráva tedy nejspíš nepřišla z adresy, za kterou se vydává. Toto ověření jsme sami neprováděli, jen čteme výsledek z hlaviček.');
+        } else if (listed) {
+          add('auth-info', 'info', 0, 'Hlavičky uvádějí: ' + listed,
+            'Tohle zapsal server příjemce, my jsme ověření sami neprováděli. Úspěšné ověření říká jen, že zpráva opravdu přišla z dané domény. Neříká nic o tom, jestli je obsah poctivý.');
+        }
+      }
+    }
+    a.emailMeta = { domain: dom, freeMail: !!freeMail, nameBrand: nameBrand ? nameBrand.brand.name : null, headersChecked: head.present && head.hasAuth };
+    return a;
   }
 
   /* ---------- Text z OCR ---------- */
@@ -835,6 +939,8 @@
     analyzeUrl: analyzeUrl,
     skeleton: skeleton,
     normalizeOcrText: normalizeOcrText,
+    analyzeEmail: analyzeEmail,
+    parseHeaders: parseHeaders,
     assessOcr: assessOcr,
     levelOf: levelOf,
     BRANDS: BRANDS

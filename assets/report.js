@@ -67,6 +67,8 @@
     if (clean(data.from)) L.push('Číslo nebo adresa odesílatele: ' + clean(data.from));
     if (clean(data.link)) L.push('Odkaz ve zprávě: ' + clean(data.link));
     if (clean(data.desc)) { L.push(''); L.push(clean(data.desc)); }
+    var tl = clean(data.timeline).split(/\n+/).map(clean).filter(Boolean);
+    if (tl.length) { L.push(''); L.push('Průběh:'); tl.forEach(function (t) { L.push('• ' + t); }); }
     var actions = (data.actions || []).map(clean).filter(Boolean);
     if (actions.length) { L.push(''); actions.forEach(function (a) { L.push('• ' + a); }); }
     L.push('');

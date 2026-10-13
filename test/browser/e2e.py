@@ -112,8 +112,8 @@ def main():
             pg.click('[data-act="again"]') if pg.is_visible('[data-act="again"]') else None
             pg.fill('#msg', 'Ahoj mami, mám nové číslo, pošli mi 5000 Kč na účet 123456/0800')
             pg.click('#go'); pg.wait_for_selector('#verdict')
-            while pg.query_selector('.opt'):
-                opts = pg.query_selector_all('.opt')
+            while pg.query_selector('#result .opt'):
+                opts = pg.query_selector_all('#result .opt')
                 pick = [o for o in opts if o.inner_text().strip() == 'Ano'] or [opts[0]]
                 pick[0].click(); pg.wait_for_timeout(80)
             pg.click('[data-act="report-yes"]'); pg.wait_for_timeout(300)
@@ -148,6 +148,62 @@ def main():
                     bad.append(s)
             check('XSS ve zprávě se nespustí (6 vstupů)', not bad, bad)
 
+
+            # --- nové režimy: odkaz, e-mail, telefonát, nouzový plán, trénink ---
+            pg.goto(BASE); pg.wait_for_timeout(200)
+            pg.click('#tab-url')
+            check('záložka Odkaz ukáže formulář', pg.is_visible('#url-in') and not pg.is_visible('#msg'))
+            pg.fill('#url-in', 'ahoj tohle neni odkaz'); pg.click('#url-form button[type=submit]'); pg.wait_for_timeout(150)
+            check('text bez adresy ukáže chybu', pg.is_visible('#url-err') and not pg.is_visible('#verdict'))
+            pg.fill('#url-in', 'https://login.csob.cz.overeni-klienta.com/prihlaseni'); pg.click('#url-form button[type=submit]'); pg.wait_for_selector('#verdict')
+            bd = pg.inner_text('.breakdown')
+            check('rozbor ukáže skutečnou doménu a subdoménu', 'overeni-klienta.com' in bd and 'login.csob.cz' in bd, bd[:120])
+            check('rozbor vysvětlí, že HTTPS nezaručuje důvěryhodnost', 'Zámek mají i podvodné stránky' in bd)
+            check('odkaz s bankou v subdoméně je vysoké riziko', 'vysoké' in pg.inner_text('#verdict').lower())
+            pg.click('[data-act="again"]'); pg.wait_for_timeout(150)
+            check('Rozebrat jiný odkaz vrátí do záložky Odkaz', pg.is_visible('#url-in') and pg.input_value('#url-in') == '')
+            pg.fill('#url-in', 'https://www.csob.cz'); pg.click('#url-form button[type=submit]'); pg.wait_for_selector('#verdict')
+            check('oficiální adresa neslibuje bezpečnost', 'neznamená, že je stránka bezpečná' in pg.inner_text('#verdict'))
+
+            pg.click('[data-act="again"]'); pg.click('#tab-mail')
+            pg.fill('#m-name', 'Česká spořitelna'); pg.fill('#m-addr', 'ceska.sporitelna@gmail.com')
+            pg.fill('#m-body', 'Váš účet bude zablokován, ověřte se.'); pg.click('#mail-form button[type=submit]'); pg.wait_for_selector('#verdict')
+            res = pg.inner_text('#result')
+            check('e-mail z gmailu jménem banky je vysoké riziko', 'vysoké' in pg.inner_text('#verdict').lower())
+            check('bez hlaviček se netvrdí ověření SPF/DKIM', 'nevložili' in res and 'SPF' not in res, res[:200])
+            pg.click('[data-act="report-yes"]'); pg.wait_for_timeout(200)
+            check('oznámení u e-mailu předvyplní adresu odesílatele', pg.input_value('#r-from') == 'ceska.sporitelna@gmail.com')
+            pg.keyboard.press('Escape'); pg.wait_for_timeout(200)
+
+            pg.click('[data-act="again"]'); pg.click('#tab-call'); pg.wait_for_selector('#call-q')
+            def ans(label):
+                pg.click('#call-box .opt:text-is("%s")' % label); pg.wait_for_timeout(60)
+            ans('Za banku'); ans('Ano'); ans('Ne'); ans('Ne'); ans('Ne'); ans('Ano'); ans('Poslal(a) jsem peníze')
+            cr = pg.inner_text('#call-result')
+            check('telefonát s bezpečným účtem je vysoké riziko', 'vysoké' in cr.lower())
+            check('průvodce upozorní, že číslo na displeji nic nedokazuje', 'Číslo na displeji nic nedokazuje' in cr)
+            pg.click('[data-call-plan]'); pg.wait_for_timeout(200)
+            checked = pg.evaluate("[...document.querySelectorAll('#sit-list input:checked')].map(c=>c.value)")
+            check('z telefonátu se otevře nouzový plán s penězi', pg.is_visible('#view-help') and checked == ['money'], checked)
+            first = pg.inner_text('.phase-now .plan-steps li')
+            check('první krok plánu je zavolat bance', 'Zavolejte své bance' in first, first)
+            pg.check('#sit-list input[value="card"]'); pg.wait_for_timeout(100)
+            n = pg.evaluate("[...document.querySelectorAll('.plan-steps b')].filter(b=>b.textContent==='Zavolejte své bance').length")
+            check('stejný krok se v plánu neopakuje', n == 1, n)
+            check('plán ukáže, co si připravit pro policii', pg.is_visible('.prep'))
+
+            pg.click('#nav-learn'); pg.wait_for_timeout(150)
+            check('sekce Naučit se má trénink i knihovnu', pg.is_visible('#training') and pg.evaluate("document.querySelectorAll('.lib').length") >= 10)
+            score = 0
+            for i in range(8):
+                pg.click('#training [data-tr="scam"]'); pg.wait_for_timeout(50)
+                pg.click('#training [data-tr-next]'); pg.wait_for_timeout(50)
+            check('trénink dojde do konce a ukáže skóre', 'Správně 5 z 8' in pg.inner_text('#training'), pg.inner_text('#training')[:80])
+            pg.click('#podvod-balik summary'); pg.click('#podvod-balik [data-lib-ex]'); pg.wait_for_selector('#verdict')
+            check('ukázka z knihovny se zkontroluje', pg.is_visible('#view-check') and 'vysoké' in pg.inner_text('#verdict').lower())
+            check('po nových režimech stále jen vlastní doména', sorted(set(u.split('/')[2] for u, m, d in reqs if u.startswith('http'))) == ['127.0.0.1:%d' % PORT])
+            check('po nových režimech žádné CSP ani JS chyby', not csp and not errors, (csp + errors)[:3])
+
             # --- mobil ---
             for w in (320, 360):
                 m = b.new_page(viewport={'width': w, 'height': 700}); m.goto(BASE)
@@ -158,6 +214,11 @@ def main():
                 ov('úvod'); m.click('[data-ex="posta"]'); m.wait_for_selector('#verdict'); ov('výsledek')
                 m.click('[data-act="report-yes"]'); m.wait_for_timeout(300); ov('okno'); m.keyboard.press('Escape')
                 m.click('#nav-report'); ov('nahlásit'); m.click('#nav-help'); ov('pomoc')
+                m.check('#sit-list input[value="money"]'); m.check('#sit-list input[value="id"]'); ov('plán')
+                m.click('#nav-learn'); ov('naučit'); m.click('#podvod-bazar summary'); ov('knihovna')
+                m.click('#nav-check'); m.click('#tab-url'); ov('odkaz'); m.fill('#url-in', 'https://login.csob.cz.overeni-klienta-velmi-dlouha-domena.com/prihlaseni/a/b/c?x=1234567890')
+                m.click('#url-form button[type=submit]'); m.wait_for_selector('#verdict'); ov('rozbor')
+                m.click('[data-act="again"]'); m.click('#tab-mail'); ov('e-mail'); m.click('#tab-call'); ov('telefonát')
                 small = m.evaluate('''[...document.querySelectorAll('a,button,input,select,summary')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.height<32}).map(e=>(e.innerText||e.id).trim().slice(0,25))''')
                 check('šířka %d px bez přetékání' % w, not over, over)
                 check('šířka %d px: klikací plochy aspoň 32 px' % w, not small, small[:6])

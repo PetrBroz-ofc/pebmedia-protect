@@ -34,6 +34,7 @@
       <a href="#" data-view="check" id="nav-check" aria-current="page"><span class="long">Zkontrolovat zprávu</span><span class="short">Kontrola</span></a>
       <a href="#nahlasit" data-view="report" id="nav-report"><span class="long">Nahlásit pokus o podvod</span><span class="short">Nahlásit</span></a>
       <a href="#pomoc" data-view="help" id="nav-help"><span class="long">Už se to stalo</span><span class="short">Už se stalo</span></a>
+      <a href="#naucit" data-view="learn" id="nav-learn"><span class="long">Naučit se</span><span class="short">Naučit se</span></a>
     </nav>
   </div>
 </header>
@@ -45,8 +46,17 @@
     <section id="ask" class="hero">
       <p class="eyebrow"><span class="dot"></span>Bezplatná kontrola podvodů</p>
       <h1>Je to podvod?</h1>
-      <p class="hero-text">Vložte sem zprávu, která vám přišla. Projdeme ji s vámi a ukážeme, co na ní nesedí.</p>
+      <p class="hero-text" id="hero-text">Vložte sem zprávu, která vám přišla. Projdeme ji s vámi a ukážeme, co na ní nesedí.</p>
 
+      <p class="mono-label modes-label" id="modes-label">Co chcete zkontrolovat</p>
+      <div class="modes" role="tablist" aria-labelledby="modes-label">
+        <button type="button" role="tab" class="mode" id="tab-msg" data-mode="msg" aria-controls="mode-msg" aria-selected="true">Zprávu</button>
+        <button type="button" role="tab" class="mode" id="tab-url" data-mode="url" aria-controls="mode-url" aria-selected="false" tabindex="-1">Odkaz</button>
+        <button type="button" role="tab" class="mode" id="tab-mail" data-mode="mail" aria-controls="mode-mail" aria-selected="false" tabindex="-1">E-mail</button>
+        <button type="button" role="tab" class="mode" id="tab-call" data-mode="call" aria-controls="mode-call" aria-selected="false" tabindex="-1">Telefonát</button>
+      </div>
+
+      <div id="mode-msg" role="tabpanel" aria-labelledby="tab-msg">
       <div class="composer" id="drop">
         <span class="corner tl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>
         <label class="sr" for="msg">Text zprávy</label>
@@ -72,12 +82,6 @@
         </div>
       </div>
 
-      <ul class="facts">
-        <li><span class="dot"></span>Text ani obrázek neodesíláme</li>
-        <li><span class="dot"></span>Zdarma, bez registrace</li>
-        <li><span class="dot"></span>Žádné reklamy</li>
-      </ul>
-
       <div class="try">
         <p class="mono-label">Nemáte zprávu po ruce? Zkuste ukázku</p>
         <div class="try-row">
@@ -87,6 +91,60 @@
           <button type="button" class="chip" data-ex="vinted">Prodej na bazaru</button>
         </div>
       </div>
+      </div>
+
+      <div id="mode-url" role="tabpanel" aria-labelledby="tab-url" hidden>
+        <form class="composer form-card" id="url-form" novalidate>
+          <span class="corner tl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>
+          <div class="form-pad">
+            <div class="field"><label for="url-in">Adresa odkazu</label>
+              <input id="url-in" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="např. https://ceskaposta-cz.info/zasilka"></div>
+            <p class="hint">Odkaz neotevíráme ani nikam neposíláme. Rozebereme jen to, co je napsané v adrese, takže je to bezpečné.</p>
+            <p class="field-err" id="url-err" role="alert" hidden>V tom, co jste vložili, jsme žádnou webovou adresu nenašli. Zkopírujte ji celou, třeba i s https://.</p>
+          </div>
+          <div class="composer-bar"><span></span><button type="submit" class="btn btn-primary">Rozebrat odkaz <span class="arrow" aria-hidden="true">→</span></button></div>
+        </form>
+        <div class="try">
+          <p class="mono-label">Zkuste ukázku</p>
+          <div class="try-row">
+            <button type="button" class="chip" data-url-ex="https://login.csob.cz.overeni-klienta.com/prihlaseni">Banka v subdoméně</button>
+            <button type="button" class="chip" data-url-ex="https://сeskaposta.cz-zasilky.info/track">Cizí písmena</button>
+            <button type="button" class="chip" data-url-ex="https://bit.ly/3xYz12">Zkrácený odkaz</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="mode-mail" role="tabpanel" aria-labelledby="tab-mail" hidden>
+        <form class="composer form-card" id="mail-form" novalidate>
+          <span class="corner tl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>
+          <div class="form-pad">
+            <div class="cols">
+              <div class="field"><label for="m-name">Jméno odesílatele</label><input id="m-name" type="text" autocomplete="off" placeholder="např. Česká spořitelna"></div>
+              <div class="field"><label for="m-addr">Adresa odesílatele</label><input id="m-addr" type="text" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="např. info@banka.cz"></div>
+              <div class="field field-wide"><label for="m-subj">Předmět</label><input id="m-subj" type="text" autocomplete="off"></div>
+              <div class="field field-wide"><label for="m-body">Text e-mailu</label><textarea id="m-body" rows="5" spellcheck="false" placeholder="Vložte text e-mailu i s odkazy"></textarea></div>
+            </div>
+            <p class="hint">Adresu najdete po rozkliknutí jména odesílatele. Jméno si může nastavit kdokoli, adresa prozradí víc.</p>
+            <details class="more-fields">
+              <summary>Mám i technické hlavičky e-mailu (pro pokročilé)</summary>
+              <div class="field"><label for="m-head">Hlavičky e-mailu</label><textarea id="m-head" rows="4" spellcheck="false" placeholder="From: …&#10;Reply-To: …&#10;Authentication-Results: …"></textarea></div>
+              <p class="hint">V poště je najdete pod volbou jako Zobrazit originál nebo Zdrojový kód zprávy. Přečteme z nich jen to, co v nich je zapsané. Sami nic neověřujeme.</p>
+            </details>
+            <p class="field-err" id="mail-err" role="alert" hidden>Vyplňte prosím aspoň adresu odesílatele nebo text e-mailu.</p>
+          </div>
+          <div class="composer-bar"><span></span><button type="submit" class="btn btn-primary">Zkontrolovat e-mail <span class="arrow" aria-hidden="true">→</span></button></div>
+        </form>
+      </div>
+
+      <div id="mode-call" role="tabpanel" aria-labelledby="tab-call" hidden>
+        <div class="card quiz call" id="call-box"></div>
+      </div>
+
+      <ul class="facts">
+        <li><span class="dot"></span>Nic z toho, co zadáte, neodesíláme</li>
+        <li><span class="dot"></span>Zdarma, bez registrace</li>
+        <li><span class="dot"></span>Žádné reklamy</li>
+      </ul>
     </section>
 
     <section id="result" hidden></section>
@@ -166,9 +224,11 @@
     </div>
 
     <section class="block">
-      <p class="mono-label">Postup</p>
+      <p class="mono-label">Nouzový plán</p>
       <h2>Co se vám stalo?</h2>
-      <div class="acc" id="scenarios"></div>
+      <p class="block-text">Označte všechno, co platí. Seřadíme kroky podle toho, co je potřeba udělat nejdřív.</p>
+      <fieldset class="checks sit-list" id="sit-list"><legend class="sr">Co se stalo</legend></fieldset>
+      <div id="plan" class="plan"></div>
     </section>
 
     <div class="police-cta">
@@ -179,6 +239,185 @@
       </div>
       <button type="button" class="btn btn-light" data-open-police>Připravit oznámení <span class="arrow" aria-hidden="true">→</span></button>
     </div>
+  </div>
+
+  <!-- ========== NAUČIT SE ========== -->
+  <div id="view-learn" hidden>
+    <section class="hero hero-sm">
+      <p class="eyebrow"><span class="dot"></span>Naučit se poznat podvod</p>
+      <h1>Poznejte podvod dřív, než přijde</h1>
+      <p class="hero-text">Krátký trénink a přehled nejčastějších triků. Na každém příkladu ukážeme, podle čeho podvod poznáte a co dělat.</p>
+    </section>
+
+    <section class="block" id="training-sec">
+      <p class="mono-label">Trénink</p>
+      <h2>Podvod, nebo v pořádku?</h2>
+      <p class="block-text">Osm krátkých zpráv. U každé tipněte, jestli je to podvod. Hned uvidíte vysvětlení.</p>
+      <div class="card quiz training" id="training"></div>
+    </section>
+
+    <section class="block">
+      <p class="mono-label">Knihovna podvodů</p>
+      <h2>Nejčastější triky podvodníků</h2>
+      <div class="acc lib-list">
+        <details class="lib" id="podvod-balik">
+          <summary><span class="lib-tag">SMS</span><span class="sum-title">Falešná zásilka</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Zpráva tvrdí, že balík nejde doručit nebo že je potřeba doplatit pár korun za clo či dopravu. Odkaz vede na falešnou stránku, která chce údaje z karty.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">PPL: Zásilku nelze doručit, chybí číslo domu. Doplňte adresu a uhraďte 29 Kč do 24 hodin: https://ppl-cz.dorucovani.top/adresa</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Malá částka a krátký termín</li><li>Adresa jen připomíná název přepravce</li><li>Chce údaje z karty kvůli pár korunám</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Na odkaz neklikejte</li><li>Stav zásilky ověřte v aplikaci nebo na webu přepravce, který napíšete sami</li><li>SMS přepošlete na 7726</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="PPL: Zásilku nelze doručit, chybí číslo domu. Doplňte adresu a uhraďte 29 Kč do 24 hodin: https://ppl-cz.dorucovani.top/adresa">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-bankar">
+          <summary><span class="lib-tag">Telefonát</span><span class="sum-title">Falešný bankéř a bezpečný účet</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Volá „bezpečnostní oddělení banky“ nebo „policie“. Tvrdí, že vám někdo krade peníze a že je musíte rychle převést na bezpečný účet nebo si nainstalovat aplikaci.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Dobrý den, tady bezpečnostní oddělení vaší banky. Na vašem účtu probíhá podezřelá transakce. Abychom ochránili vaše úspory, převeďte je prosím na bezpečný účet.</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Bezpečný účet neexistuje</li><li>Číslo na displeji může vypadat jako číslo banky, i to se dá podvrhnout</li><li>Spěch, strach a prosba, abyste o tom nikomu neříkali</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Zavěste</li><li>Zavolejte bance sami na číslo ze zadní strany karty</li><li>Nic nepřevádějte, nic neinstalujte a nesdělujte žádné kódy</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-call>Projít průvodce telefonátem <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-mami">
+          <summary><span class="lib-tag">Chat</span><span class="sum-title">Ahoj mami, mám nové číslo</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Někdo píše jako vaše dítě nebo jiný blízký. Rozbil se mu telefon, má nové číslo a hned potřebuje zaplatit fakturu.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Ahoj mami, rozbil se mi mobil, tohle je moje nové číslo. Můžeš za mě rychle zaplatit fakturu 12 400 Kč? Banku mám ve starém telefonu.</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Neznámé číslo a hned prosba o peníze</li><li>Nechce volat, jen psát</li><li>Spěch a výmluva, proč nemůže zaplatit sám</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Zavolejte na číslo, které máte u blízkého uložené</li><li>Zeptejte se na něco, co ví jen on</li><li>Dokud si to neověříte, nic neposílejte</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Ahoj mami, rozbil se mi mobil, tohle je moje nové číslo. Můžeš za mě rychle zaplatit fakturu 12 400 Kč? Banku mám ve starém telefonu.">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-bazar">
+          <summary><span class="lib-tag">Bazar</span><span class="sum-title">Kupující, který vám chce „poslat peníze“</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Při prodeji na bazaru nebo Vinted se ozve zájemce. Zboží prý zaplatil přes „bezpečnou platbu“ a vy máte jen kliknout a peníze přijmout.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Dobrý den, zboží jsem zaplatil přes Vinted, kurýr si ho vyzvedne. Pro přijetí platby klikněte a potvrďte kartu: vinted-cz.prijem-platby.online/item/552</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Abyste peníze dostali, nikdy nemusíte zadávat údaje z karty</li><li>Odkaz vede mimo web bazaru</li><li>Kupující chce přejít do WhatsAppu nebo e-mailu</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Komunikujte jen uvnitř bazaru</li><li>Na odkazy od kupujících neklikejte</li><li>Profil nahlaste bazaru</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Dobrý den, zboží jsem zaplatil přes Vinted, kurýr si ho vyzvedne. Pro přijetí platby klikněte a potvrďte kartu: vinted-cz.prijem-platby.online/item/552">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-investice">
+          <summary><span class="lib-tag">Reklama</span><span class="sum-title">Zaručený výdělek z investic</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Reklama se známou tváří nebo „poradce“ slibuje rychlé zbohatnutí na kryptoměnách či akciích. Začíná se malou částkou, pak chce víc a víc.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Gratulujeme! Byli jste vybráni do investičního programu. Z vkladu 5 000 Kč můžete mít do měsíce 80 000 Kč. Zaručený výdělek bez rizika.</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Zaručený výdělek neexistuje</li><li>Známá osobnost v reklamě bývá zneužitá</li><li>Tlak, abyste vložili víc, nebo instalace aplikace pro vzdálený přístup</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Nic neposílejte</li><li>Investiční firmu si ověřte v seznamech České národní banky</li><li>Kdo slibuje vrácení ztracených peněz za poplatek, bývá další podvodník</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Gratulujeme! Byli jste vybráni do investičního programu. Z vkladu 5 000 Kč můžete mít do měsíce 80 000 Kč. Zaručený výdělek bez rizika.">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-prace">
+          <summary><span class="lib-tag">Chat</span><span class="sum-title">Snadná práce z domova</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Nabídka vydělat stovky korun denně za lajkování videí nebo hodnocení hotelů. Komunikace se rychle přesune na WhatsApp nebo Telegram.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Dobrý den, nabízíme práci z domova, 1 500 až 3 000 Kč denně za hodnocení produktů. Pro více informací napište na WhatsApp.</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Velký výdělek za skoro žádnou práci</li><li>Přesun do chatu</li><li>Časem chtějí „vklad“, abyste mohli vybrat odměnu</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Neodpovídejte</li><li>Neposílejte peníze ani kopii dokladů</li><li>Zprávu nahlaste jako spam</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Dobrý den, nabízíme práci z domova, 1 500 až 3 000 Kč denně za hodnocení produktů. Pro více informací napište na WhatsApp.">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-preplatek">
+          <summary><span class="lib-tag">SMS</span><span class="sum-title">Přeplatek nebo vrácení peněz</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Úřad, energetická firma nebo operátor vám prý dluží peníze. Abyste je dostali, máte vyplnit údaje z karty.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Finanční správa: Máte nárok na vrácení přeplatku daně 4 210 Kč. Pro výplatu vyplňte údaje platební karty: https://vraceni-dane.online/form</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Úřady peníze vracejí na účet, ne „přes kartu“</li><li>Adresa není oficiální web úřadu</li><li>Lákavá částka, kterou nečekáte</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Na odkaz neklikejte</li><li>Ověřte si to přímo u úřadu nebo firmy</li><li>SMS přepošlete na 7726</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Finanční správa: Máte nárok na vrácení přeplatku daně 4 210 Kč. Pro výplatu vyplňte údaje platební karty: https://vraceni-dane.online/form">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-ucet">
+          <summary><span class="lib-tag">E-mail</span><span class="sum-title">Zablokovaný účet nebo schránka</span></summary>
+          <div class="inner">
+            <p class="lib-desc">E-mail jako od banky, Seznamu, Microsoftu nebo Netflixu tvrdí, že účet bude zablokován. Odkaz vede na kopii přihlašovací stránky.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Váš účet bude do 24 hodin zablokován kvůli neověřeným údajům. Přihlaste se a ověřte svou totožnost: https://seznam-overeni.com/login</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Výhrůžka zablokováním a krátký termín</li><li>Adresa odkazu není oficiální doména služby</li><li>Jméno odesílatele nesedí s jeho adresou</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Na odkaz neklikejte</li><li>Přihlaste se sami přes aplikaci nebo web, který znáte</li><li>Pokud jste heslo zadali, hned ho změňte</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Váš účet bude do 24 hodin zablokován kvůli neověřeným údajům. Přihlaste se a ověřte svou totožnost: https://seznam-overeni.com/login">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-qr">
+          <summary><span class="lib-tag">Dopis i SMS</span><span class="sum-title">QR kód s výzvou k platbě</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Dopis, leták nebo zpráva s QR kódem, který máte rychle naskenovat a zaplatit pokutu, poplatek nebo „doplatek“.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Výzva k úhradě: nezaplacené parkovné. Naskenujte QR kód a uhraďte pokutu 1 500 Kč do 3 dnů, jinak předáme vymáhání.</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Nátlak a výhrůžka vymáháním</li><li>Neznáte, za co platíte</li><li>QR kód může vést na cizí účet nebo falešnou stránku</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Než zaplatíte, ověřte si pohledávku u úřadu nebo firmy na kontaktu, který si najdete sami</li><li>Podívejte se, komu peníze posíláte, než platbu potvrdíte</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Výzva k úhradě: nezaplacené parkovné. Naskenujte QR kód a uhraďte pokutu 1 500 Kč do 3 dnů, jinak předáme vymáhání.">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-eshop">
+          <summary><span class="lib-tag">Web</span><span class="sum-title">Podezřele levný e-shop</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Obchod nabízí značkové zboží za zlomek ceny, často z reklamy na sociálních sítích. Zboží nikdy nepřijde.</p>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Ceny, které jsou až moc dobré</li><li>Chybí IČO, adresa nebo skutečný kontakt</li><li>Jen platba předem, žádná dobírka</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Podívejte se do seznamu rizikových e-shopů České obchodní inspekce</li><li>Hledejte recenze mimo samotný web</li><li>Platili jste kartou? Zavolejte bance kvůli reklamaci platby</li></ul></div>
+            </div>
+            <a class="way-link" href="https://coi.gov.cz" target="_blank" rel="noopener">coi.gov.cz <span aria-hidden="true">↗</span></a>
+          </div>
+        </details>
+        <details class="lib" id="podvod-znamka">
+          <summary><span class="lib-tag">Web</span><span class="sum-title">Falešná dálniční známka</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Stránka, která vypadá jako oficiální prodej elektronické dálniční známky, ale účtuje si vyšší cenu, nebo známku vůbec neprodá.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Kupte si dálniční známku na rok 2027 rychle a bez front: https://dalnicni-znamka-eshop.com</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Web se objeví mezi placenými výsledky vyhledávání</li><li>Cena je vyšší než oficiální</li><li>Adresa není oficiální prodejní web</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Známku kupujte jen přes oficiální web edalnice.cz nebo na prodejních místech</li><li>Adresu si raději napište sami</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-ex="Kupte si dálniční známku na rok 2027 rychle a bez front: https://dalnicni-znamka-eshop.com">Zkontrolovat ukázku <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+        <details class="lib" id="podvod-podpora">
+          <summary><span class="lib-tag">Telefonát</span><span class="sum-title">Falešná technická podpora</span></summary>
+          <div class="inner">
+            <p class="lib-desc">Volá „Microsoft“, operátor nebo banka a tvrdí, že máte v počítači virus. Chce, abyste nainstalovali AnyDesk nebo TeamViewer.</p>
+            <p class="mono-label lib-label">Vymyšlená ukázka</p>
+            <blockquote class="lib-ex">Dobrý den, volám z technické podpory Microsoftu. Ve vašem počítači jsme našli virus. Nainstalujte si prosím aplikaci AnyDesk, pomůžeme vám ho odstranit.</blockquote>
+            <div class="lib-cols">
+              <div><p class="lib-h">Podle čeho ho poznáte</p><ul class="lib-signs"><li>Firmy samy nevolají kvůli virům ve vašem počítači</li><li>Chtějí vzdálený přístup</li><li>Pak „omylem“ vrací peníze a chtějí je zpátky</li></ul></div>
+              <div><p class="lib-h">Co dělat</p><ul class="lib-todo"><li>Zavěste</li><li>Nic neinstalujte</li><li>Pokud už je aplikace nainstalovaná, odpojte zařízení od internetu a postupujte podle nouzového plánu</li></ul></div>
+            </div>
+            <button type="button" class="btn btn-secondary lib-btn" data-lib-call>Projít průvodce telefonátem <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </details>
+      </div>
+      <p class="lib-meta">Aktualizováno 13. 10. 2026. Ukázky jsou vymyšlené, adresy v nich neotevírejte.</p>
+      <p class="note-src">Vychází z doporučení <a href="https://archiv.policie.gov.cz/clanek/web-informacni-servis-zpravodajstvi-soucasne-trendy-podvodniku-vishing-a-spoofing.aspx" target="_blank" rel="noopener">Policie ČR</a> a <a href="https://nukib.gov.cz/cs/infoservis/aktuality/1997-jak-se-branit-podvodnym-telefonatum/" target="_blank" rel="noopener">NÚKIB</a>. Víc příkladů a testů najdete na <a href="https://www.kybertest.cz" target="_blank" rel="noopener">kybertest.cz</a> (Česká bankovní asociace) a <a href="https://www.panprokoukl.cz" target="_blank" rel="noopener">panprokoukl.cz</a> (Olomoucký kraj a Policie ČR).</p>
+    </section>
   </div>
 </main>
 
@@ -230,6 +469,7 @@
     <fieldset class="step">
       <legend><span class="step-num">02</span>Popište to vlastními slovy</legend>
       <div class="field"><label for="r-desc">Co se dělo</label><textarea id="r-desc" rows="4" placeholder="Kdo psal nebo volal, co po vás chtěl a co jste udělali."></textarea></div>
+      <div class="field"><label for="r-timeline">Průběh krok po kroku</label><textarea id="r-timeline" rows="3" placeholder="Každý krok na nový řádek, třeba:&#10;14:20 přišla SMS o zásilce&#10;14:25 zadal(a) jsem údaje z karty&#10;14:40 volal(a) jsem bance"></textarea></div>
       <div class="field"><label for="r-msg">Text podvodné zprávy</label><textarea id="r-msg" rows="3" placeholder="Pokud ho máte, vložte ho sem."></textarea></div>
       <div class="checks">
         <p class="checks-title">Co máte u sebe jako důkaz</p>
@@ -340,6 +580,7 @@
         <a href="#" data-view="check" data-top>Zkontrolovat zprávu</a>
         <a href="#nahlasit" data-view="report">Nahlásit pokus o podvod</a>
         <a href="#pomoc" data-view="help">Už se to stalo</a>
+        <a href="#naucit" data-view="learn">Naučit se poznat podvod</a>
       </div>
 
       <div class="footer-col">
@@ -372,6 +613,7 @@
 <!--/BODY-->
 <script src="assets/analyzer.js"></script>
 <script src="assets/report.js"></script>
+<script src="assets/guides.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
