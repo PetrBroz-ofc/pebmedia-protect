@@ -720,3 +720,12 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 /* Hlavní menu se čtyřmi položkami */
 @media (max-width: 560px) { .main-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); } .main-nav a { padding-inline: 2px; font-size: 13px; } }
 @media (max-width: 380px) { .main-nav a { font-size: 12px; } }
+
+/* Logo v hlavičce vede zpět na pebmedia.cz: při najetí zmizí štítek Protect a zůstane jen PEBMedia */
+.logo-home .logo-tag {
+  display: inline-block; max-width: 90px; overflow: hidden; white-space: nowrap;
+  transition: max-width .3s var(--ease), opacity .2s var(--ease), padding .3s var(--ease), margin .3s var(--ease);
+}
+.logo-home:hover .logo-tag, .logo-home:focus-visible .logo-tag { max-width: 0; opacity: 0; padding-inline: 0; margin-left: -8px; }
+.logo-home:hover > span:not(.logo-tag):not(.logo-mark) { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .logo-home .logo-tag { transition: none; } }
