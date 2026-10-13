@@ -103,9 +103,15 @@ svg { flex: none; }
 }
 .main-nav a:hover { color: var(--ink); }
 .main-nav a[aria-current="page"] { color: var(--ink); background: var(--accent-tint); }
-@media (max-width: 440px) {
-  .site-header .logo > span:nth-child(2) { display: none; }
-  .main-nav a { padding: 7px 11px; font-size: 13.5px; }
+.main-nav .short { display: none; }
+@media (max-width: 860px) {
+  .main-nav .long { display: none; }
+  .main-nav .short { display: inline; }
+}
+@media (max-width: 560px) {
+  .header-inner { flex-wrap: wrap; height: auto; padding-block: 10px; row-gap: 10px; }
+  .main-nav { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+  .main-nav a { text-align: center; padding: 8px 6px; font-size: 13.5px; }
 }
 
 /* ---------------------------------- Úvod ---------------------------------- */
@@ -351,7 +357,7 @@ input[type="text"], select, .field textarea {
 }
 .field textarea { resize: vertical; }
 input:focus, select:focus, .field textarea:focus { outline: none; border-color: var(--ink); background: var(--surface); }
-.checks { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.checks { border: 0; margin: 0; padding: 0; display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 @media (max-width: 560px) { .checks { grid-template-columns: 1fr; } }
 .checks legend { margin-bottom: 8px; padding: 0; }
 .check {
@@ -370,6 +376,100 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .copied { color: var(--accent); font-weight: 600; font-size: 14px; }
 .note { font-size: 14px; color: var(--ink-soft); }
+
+
+/* ---------------------------------- Dotaz na nahlášení ---------------------------------- */
+.report-ask {
+  margin-top: 16px; padding: 20px 22px; border-radius: var(--radius-l);
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s);
+  display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: center; justify-content: space-between;
+}
+.report-ask > div:first-child { flex: 1 1 300px; min-width: 0; }
+.report-ask-q { font-family: var(--font-display); font-weight: 600; font-size: 21px; letter-spacing: -0.01em; margin-top: 6px; }
+.report-ask-sub { color: var(--ink-soft); font-size: 15px; margin-top: 4px; }
+.report-ask-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.report-ask.is-done { background: var(--accent-tint); border-color: rgba(11, 110, 99, 0.2); box-shadow: none; }
+.report-ask.is-done p { flex: 1 1 300px; font-size: 15px; }
+
+/* ---------------------------------- Nahlásit pokus ---------------------------------- */
+.police-cta {
+  margin-top: 8px; padding: 28px; border-radius: var(--radius-l); background: var(--ink); color: #F6F6F3;
+  display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: flex-end; justify-content: space-between;
+}
+#view-help .police-cta { margin-top: 44px; }
+.police-cta > div { flex: 1 1 320px; min-width: 0; }
+.police-cta .mono-label { color: var(--accent-bright); }
+.police-cta h2 { font-size: clamp(24px, 4vw, 30px); margin-top: 10px; }
+.police-cta p:not(.mono-label) { color: rgba(246, 246, 243, 0.72); margin-top: 8px; max-width: 34em; }
+.btn-light { background: #F6F6F3; color: var(--ink); text-decoration: none; }
+.btn-light:hover { background: #fff; color: var(--ink); }
+
+.ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+@media (max-width: 600px) { .ways { grid-template-columns: 1fr; } }
+.way {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m);
+  padding: 20px; display: flex; flex-direction: column; gap: 6px;
+}
+.way-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.way h3 { font-size: 19px; }
+.way p:not(.way-tag) { color: var(--ink-soft); font-size: 15px; }
+.way code, .send code { font-family: var(--font-mono); font-size: 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
+.num-big { font-family: var(--font-display); font-size: 18px; color: var(--ink); }
+.way-link { margin-top: auto; padding-top: 8px; font-weight: 600; font-size: 14.5px; color: var(--accent); text-decoration: none; }
+.way-link:hover { color: var(--accent-ink); text-decoration: underline; }
+.note-src { font-size: 14px; color: var(--ink-faint); margin-top: 16px; max-width: 46em; }
+
+/* ---------------------------------- Okno s oznámením ---------------------------------- */
+.modal {
+  width: min(720px, calc(100% - 24px)); max-height: min(92vh, 900px); padding: 0; border: 0;
+  border-radius: 20px; background: var(--bg); color: var(--ink); box-shadow: 0 24px 80px rgba(20, 24, 27, 0.35);
+  overflow: hidden;
+}
+.modal[open] { display: flex; flex-direction: column; animation: modal-in .35s var(--ease); }
+.modal::backdrop { background: rgba(20, 24, 27, 0.55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+@keyframes modal-in { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+.modal-head {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  padding: 20px 22px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.modal-head h2 { font-size: 24px; margin-top: 6px; }
+.modal-close {
+  flex: none; width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--ink);
+  transition: background .2s var(--ease), transform .3s var(--ease);
+}
+.modal-close:hover { background: var(--bg); transform: rotate(90deg); }
+.modal-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.modal-body { overflow-y: auto; padding: 20px 22px 26px; display: grid; gap: 22px; }
+.modal-intro { color: var(--ink-soft); font-size: 15px; }
+.step { border: 0; margin: 0; padding: 0; display: grid; gap: 14px; min-width: 0; }
+.step legend { padding: 0; margin-bottom: 12px; font-family: var(--font-display); font-weight: 600; font-size: 19px; display: flex; align-items: baseline; gap: 10px; }
+.step-num { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--accent); }
+.hint { font-size: 14px; color: var(--ink-soft); }
+.field-wide { grid-column: 1 / -1; }
+@media (max-width: 560px) { .field-wide { grid-column: auto; } .modal-body, .modal-head { padding-inline: 16px; } }
+.seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .seg { grid-template-columns: 1fr; } }
+.seg-opt {
+  display: flex; gap: 10px; align-items: center; cursor: pointer; padding: 12px 14px; font-size: 14.5px; font-weight: 500;
+  border: 1.5px solid var(--border); border-radius: var(--radius-m); background: var(--surface);
+}
+.seg-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-tint); }
+.seg-opt input { accent-color: var(--accent); margin: 0; width: 18px; height: 18px; }
+.checks-title { grid-column: 1 / -1; font-size: 14px; font-weight: 600; }
+.modal-actions { display: flex; }
+.modal .out { gap: 12px; }
+.send-title { margin-top: 10px; }
+.send { list-style: none; margin: 0; padding: 0; counter-reset: s; display: grid; gap: 10px; }
+.send li {
+  counter-increment: s; display: grid; gap: 4px; padding: 14px 16px 14px 52px; position: relative;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); font-size: 14.5px;
+}
+.send li::before { content: counter(s, decimal-leading-zero); position: absolute; left: 16px; top: 15px; font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--accent); }
+.send li > span { color: var(--ink-soft); }
+.send .addr { overflow-wrap: anywhere; }
+.send .way-link { padding-top: 4px; }
+.small-note { font-size: 13px; color: var(--ink-faint); }
 
 /* ---------------------------------- Patička ---------------------------------- */
 /* Tmavá patička: černá z palety PEBMedia, teal jen jako akcent. */
@@ -390,8 +490,6 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
   font-size: clamp(38px, 7vw, 68px); margin-top: 14px; text-wrap: balance;
 }
 .footer-claim span { color: var(--accent-bright); }
-.btn-light { background: var(--f-ink); color: var(--ink); text-decoration: none; }
-.btn-light:hover { background: #fff; color: var(--ink); }
 
 .footer-grid {
   display: grid; grid-template-columns: 1.4fr 1fr 1.2fr 1.5fr; gap: 40px 32px;

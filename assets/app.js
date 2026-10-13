@@ -22,13 +22,13 @@
   };
 
   /* ---------- Přepínání stránek ---------- */
+  var VIEWS = ['check', 'report', 'help'];
   function showView(v) {
-    var help = v === 'help';
-    $('view-check').hidden = help;
-    $('view-help').hidden = !help;
-    $('nav-check').removeAttribute('aria-current');
-    $('nav-help').removeAttribute('aria-current');
-    if (help) $('nav-help').setAttribute('aria-current', 'page'); else $('nav-check').setAttribute('aria-current', 'page');
+    VIEWS.forEach(function (name) {
+      $('view-' + name).hidden = name !== v;
+      $('nav-' + name).removeAttribute('aria-current');
+    });
+    $('nav-' + v).setAttribute('aria-current', 'page');
     window.scrollTo(0, 0);
   }
   each('[data-view]', function (a) {
@@ -40,6 +40,7 @@
     });
   });
   if (location.hash === '#pomoc') showView('help');
+  if (location.hash === '#nahlasit') showView('report');
 
   /* ---------- Kontrola ---------- */
   function runCheck() {
@@ -47,6 +48,7 @@
     if (!text.trim()) { $('msg').focus(); return; }
     state.analysis = A.analyze(text);
     state.answers = {};
+    state.reportChoice = null;
     $('ask').hidden = true;
     renderResult();
     window.scrollTo(0, 0);
@@ -69,21 +71,21 @@
   });
 
   var VERDICT = {
-    high: { pill: 'Vysoké riziko', title: 'Tohle vypadá jako podvod', say: 'Na odkaz neklikejte, nic neplaťte a nikam nezadávejte své údaje.' },
-    mid: { pill: 'Zvýšené riziko', title: 'Tady něco nehraje', say: 'Než cokoli uděláte, ověřte si to jinou cestou než přes tuhle zprávu.' },
-    low: { pill: 'Nízké riziko', title: 'Nic podezřelého jsme nenašli', say: 'Kdyby ale zpráva chtěla peníze, heslo nebo kód, zbystřete.' }
+    high: { pill: 'Vysoké riziko', title: 'Tohle vypadá jako podvod', say: 'Na odkaz neklikejte, nic neplaťte a nikde nevyplňujte své údaje. Zprávu klidně smažte.' },
+    mid: { pill: 'Zvýšené riziko', title: 'Něco tady nesedí', say: 'Než cokoli uděláte, ověřte si to jinak než přes tuhle zprávu. Třeba v aplikaci firmy nebo telefonem.' },
+    low: { pill: 'Nízké riziko', title: 'Nic podezřelého jsme nenašli', say: 'Kdyby ale po vás chtěla peníze, heslo nebo kód z SMS, zbystřete.' }
   };
 
   var NEXT = {
     high: [
       'Zprávu smažte a odesílatele zablokujte.',
-      'Pokud vám k tomu někdo volá, zavěste. Banka ani policie po vás nikdy nechtějí převod peněz.',
+      'Volá vám k tomu někdo? Zavěste. Banka ani policie po vás nikdy nebudou chtít, abyste někam převáděli peníze.',
       'Chcete si něco ověřit? Otevřete aplikaci nebo web firmy sami, ne přes odkaz.'
     ],
     mid: [
       'Zatím na nic neklikejte a nic neplaťte.',
       'Ověřte si to v aplikaci firmy nebo telefonem na číslo, které znáte.',
-      'Když si nejste jistí, ukažte zprávu někomu blízkému.'
+      'Nejste si jistí? Ukažte zprávu někomu blízkému. Ve dvou se to posuzuje líp.'
     ],
     low: [
       'Přihlašujte se vždycky přes aplikaci nebo web, který napíšete sami.',
@@ -169,6 +171,18 @@
       '<div class="meter ' + ev.level + '" aria-hidden="true"><i></i><i></i><i></i></div>' +
       '<div class="meter-legend" aria-hidden="true"><span>Nízké</span><span>Zvýšené</span><span>Vysoké</span></div></div>';
 
+    if (ev.level !== 'low') {
+      if (state.reportChoice === 'no') {
+        h += '<div class="report-ask is-done"><p>Dobře. Kdybyste si to rozmysleli, podvod můžete nahlásit kdykoli. Podvodnou SMS stačí přeposlat na <b>7726</b>.</p>' +
+          '<button type="button" class="link" data-act="report-page">Další možnosti nahlášení</button></div>';
+      } else {
+        h += '<div class="report-ask"><div><p class="mono-label">Nahlášení</p><p class="report-ask-q">Chcete tenhle pokus nahlásit policii?</p>' +
+          '<p class="report-ask-sub">Pomůžeme vám sepsat oznámení. Zabere to pár minut a nic se neodešle bez vás.</p></div>' +
+          '<div class="report-ask-btns"><button type="button" class="btn btn-primary" data-act="report-yes">Ano, nahlásit <span class="arrow" aria-hidden="true">→</span></button>' +
+          '<button type="button" class="btn btn-secondary" data-act="report-no">Teď ne</button></div></div>';
+      }
+    }
+
     if (ev.needHelp) {
       h += '<div class="callout"><p>Už jste na něco klikli nebo něco zaplatili? Poradíme, co udělat hned teď.</p><button type="button" class="btn btn-primary" data-act="help">Co mám dělat <span class="arrow" aria-hidden="true">→</span></button></div>';
     }
@@ -213,7 +227,7 @@
         return '<button type="button" class="opt" data-q="' + current.id + '" data-v="' + o.v + '">' + esc(o.label) + '</button>';
       }).join('') + '</div></div>';
     } else {
-      h += '<p class="quiz-done">Díky. Výsledek nahoře už počítá s vašimi odpověďmi.</p>';
+      h += '<p class="quiz-done">Díky. Výsledek nahoře už počítá s tím, co jste odpověděli.</p>';
     }
     h += '</div></section>';
 
@@ -226,7 +240,13 @@
 
     box.querySelector('[data-act="again"]').addEventListener('click', function () { resetCheck(); $('msg').focus(); window.scrollTo(0, 0); });
     var hb = box.querySelector('[data-act="help"]');
-    if (hb) hb.addEventListener('click', function () { prefillReport(); showView('help'); });
+    if (hb) hb.addEventListener('click', function () { showView('help'); });
+    var ry = box.querySelector('[data-act="report-yes"]');
+    if (ry) ry.addEventListener('click', function () { openPolice(true); });
+    var rn = box.querySelector('[data-act="report-no"]');
+    if (rn) rn.addEventListener('click', function () { state.reportChoice = 'no'; rerender(); });
+    var rp = box.querySelector('[data-act="report-page"]');
+    if (rp) rp.addEventListener('click', function () { showView('report'); });
     Array.prototype.forEach.call(box.querySelectorAll('.opt'), function (b) {
       b.addEventListener('click', function () {
         state.answers[b.getAttribute('data-q')] = b.getAttribute('data-v');
@@ -423,56 +443,129 @@
     });
   });
 
-  /* ---------- Podklady pro policii ---------- */
+  /* ---------- Oznámení pro policii (vyskakovací okno) ---------- */
+  var dlg = $('police');
+  var REGIONS = {
+    krpa: 'Krajské ředitelství policie hl. m. Prahy', krps: 'Krajské ředitelství policie Středočeského kraje',
+    krpc: 'Krajské ředitelství policie Jihočeského kraje', krpp: 'Krajské ředitelství policie Plzeňského kraje',
+    krpk: 'Krajské ředitelství policie Karlovarského kraje', krpu: 'Krajské ředitelství policie Ústeckého kraje',
+    krpl: 'Krajské ředitelství policie Libereckého kraje', krph: 'Krajské ředitelství policie Královéhradeckého kraje',
+    krpe: 'Krajské ředitelství policie Pardubického kraje', krpj: 'Krajské ředitelství policie kraje Vysočina',
+    krpb: 'Krajské ředitelství policie Jihomoravského kraje', krpm: 'Krajské ředitelství policie Olomouckého kraje',
+    krpz: 'Krajské ředitelství policie Zlínského kraje', krpt: 'Krajské ředitelství policie Moravskoslezského kraje'
+  };
+  var CHANNEL_GUESS = [[/whats\s?app|messenger|telegram|signal/i, 'přes WhatsApp nebo jiný chat'], [/vinted|bazos|bazar|sbazar/i, 'přes inzerát nebo bazar'], [/@|e-?mail/i, 'e-mailem']];
+
+  function val(id) { return $(id).value.trim(); }
+  function kind() { var r = document.querySelector('input[name="r-kind"]:checked'); return r ? r.value : 'attempt'; }
+
+  function syncKind() {
+    var loss = kind() === 'loss';
+    each('.loss-only', function (el) { el.hidden = !loss; });
+  }
+  each('input[name="r-kind"]', function (r) { r.addEventListener('change', syncKind); });
+
+  function syncRegion() { $('r-addr').textContent = $('r-region').value + '.podatelna@policie.gov.cz'; }
+  $('r-region').addEventListener('change', function () { syncRegion(); if (!$('report-out').hidden) buildReport(); });
+
   function prefillReport() {
     var a = state.analysis;
     if (!a) return;
     if (!$('r-msg').value) $('r-msg').value = a.text.trim();
-    if (!$('r-link').value && a.urls.length) $('r-link').value = a.urls.map(function (u) { return u.raw; }).join(', ');
+    if (!$('r-link').value && a.urls.length) $('r-link').value = a.urls.map(function (u) { return u.raw + (u.foreign ? ' (skutečná adresa: ' + u.ascii + ')' : ''); }).join(', ');
+    if (!$('r-when').value) $('r-when').value = new Date().toLocaleDateString('cs-CZ');
+    CHANNEL_GUESS.some(function (g) {
+      if (g[0].test(a.text)) { $('r-channel').value = g[1]; return true; }
+      return false;
+    });
+  }
+
+  function openPolice(fromResult) {
+    if (fromResult) prefillReport();
+    syncKind();
+    syncRegion();
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    dlg.querySelector('.modal-body').scrollTop = 0;
+  }
+  function closePolice() { if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
+  each('[data-open-police]', function (b) { b.addEventListener('click', function () { openPolice(false); }); });
+  dlg.querySelector('[data-close]').addEventListener('click', closePolice);
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) closePolice(); });
+
+  function buildReport() {
+    var loss = kind() === 'loss';
+    var checked = Array.prototype.map.call(dlg.querySelectorAll('.checks input:checked'), function (c) { return c.value; });
+    var region = $('r-region').value;
+    var L = [];
+    L.push('Policie České republiky');
+    L.push(REGIONS[region]);
+    L.push('');
+    L.push('Věc: Oznámení o ' + (loss ? 'podvodu' : 'pokusu o podvod'));
+    L.push('');
+    L.push('Oznamovatel');
+    if (val('r-name') || val('r-born') || val('r-address') || val('r-contact')) {
+      L.push('Jméno a příjmení: ' + (val('r-name') || 'neuvedeno'));
+      L.push('Datum narození: ' + (val('r-born') || 'neuvedeno'));
+      L.push('Bydliště: ' + (val('r-address') || 'neuvedeno'));
+      if (val('r-contact')) L.push('Kontakt: ' + val('r-contact'));
+    } else {
+      L.push('Oznámení podávám anonymně.');
+    }
+    L.push('');
+    L.push('Co se stalo');
+    var intro = (val('r-when') ? 'Dne ' + val('r-when') + ' ' : '') + 'mě kontaktoval neznámý člověk ' + $('r-channel').value +
+      (val('r-from') ? ' z čísla nebo adresy ' + val('r-from') : '') + '.';
+    L.push(intro.charAt(0).toUpperCase() + intro.slice(1));
+    if (val('r-desc')) L.push(val('r-desc'));
+    if (val('r-link')) L.push('Zpráva obsahovala odkaz: ' + val('r-link'));
+    if (checked.length) { L.push(''); checked.forEach(function (c) { L.push('• ' + c); }); }
+    L.push('');
+    L.push('Škoda');
+    if (loss) {
+      L.push('Přišel(a) jsem o ' + (val('r-amount') || 'částku, kterou ještě upřesním') + '.');
+      if (val('r-account')) L.push('Peníze odešly na účet: ' + val('r-account'));
+      L.push($('r-claim').checked ? 'Žádám, aby mi pachatel způsobenou škodu nahradil.' : '');
+    } else {
+      L.push('Žádná škoda mi nevznikla, šlo o pokus. Oznamuji ho, aby se mohl prověřit a nenaletěl někdo další.');
+    }
+    L.push('');
+    L.push('Důkazy');
+    L.push('Mám k dispozici snímky obrazovky zpráv' + (loss ? ' a potvrzení o platbě' : '') + ' a na vyžádání je předložím.');
+    if (val('r-msg')) { L.push(''); L.push('Text zprávy, jak mi přišla:'); L.push('„' + val('r-msg') + '“'); }
+    L.push('');
+    L.push('Děkuji za prošetření.');
+    L.push('');
+    L.push((val('r-name') || '') + (val('r-name') ? ', ' : '') + new Date().toLocaleDateString('cs-CZ'));
+
+    var text = L.filter(function (line, i, arr) { return !(line === '' && arr[i - 1] === ''); }).join('\n');
+    $('report-text').textContent = text;
+    var addr = region + '.podatelna@policie.gov.cz';
+    var subject = loss ? 'Oznámení o podvodu' : 'Oznámení o pokusu o podvod';
+    $('r-mail').href = 'mailto:' + addr + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text.slice(0, 1800));
+    return text;
   }
 
   $('report').addEventListener('submit', function (e) {
     e.preventDefault();
-    var val = function (id) { return $(id).value.trim(); };
-    var checked = Array.prototype.map.call(document.querySelectorAll('.checks input:checked'), function (c) { return c.value; });
-    var L = [
-      'PODKLADY K OZNÁMENÍ PODVODU',
-      'Připraveno ' + new Date().toLocaleDateString('cs-CZ'),
-      '',
-      'Kdy se to stalo: ' + (val('r-when') || 'neuvedeno'),
-      'Jak mě kontaktovali: ' + $('r-channel').value,
-      'Číslo nebo adresa podvodníka: ' + (val('r-from') || 'neuvedeno'),
-      'Odkaz ze zprávy: ' + (val('r-link') || 'neuvedeno'),
-      '',
-      'Co jsem udělal(a):'
-    ];
-    if (checked.length) checked.forEach(function (c) { L.push('  • ' + c); }); else L.push('  • neuvedeno');
-    L.push('');
-    if (val('r-amount') || val('r-account')) {
-      L.push('Škoda: ' + (val('r-amount') || 'neuvedeno'));
-      L.push('Peníze odešly na: ' + (val('r-account') || 'neuvedeno'));
-      L.push('');
-    }
-    if (val('r-desc')) L.push('Popis:', val('r-desc'), '');
-    if (val('r-msg')) L.push('Text zprávy:', val('r-msg'), '');
-    L.push('Mám u sebe screenshoty zpráv' + (val('r-amount') ? ' a potvrzení o platbě' : '') + '.');
-    $('report-text').textContent = L.join('\n');
+    buildReport();
     $('report-out').hidden = false;
     $('copy-msg').textContent = '';
-    $('report-out').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    $('report-out').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  $('copy').addEventListener('click', function () {
-    var done = function () { $('copy-msg').textContent = 'Zkopírováno'; };
+  function copyText(text, node, msgEl, okMsg) {
+    var done = function () { msgEl.textContent = okMsg; };
     var fallback = function () {
       var rng = document.createRange();
-      rng.selectNodeContents($('report-text'));
+      rng.selectNodeContents(node);
       var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
-      $('copy-msg').textContent = 'Text je označený, zkopírujte ho';
+      msgEl.textContent = 'Text je označený, zkopírujte si ho';
     };
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText($('report-text').textContent).then(done, fallback);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
       else fallback();
     } catch (err) { fallback(); }
-  });
+  }
+  $('copy').addEventListener('click', function () { copyText($('report-text').textContent, $('report-text'), $('copy-msg'), 'Zkopírováno'); });
+  $('copy-addr').addEventListener('click', function () { copyText($('r-addr').textContent, $('r-addr'), $('copy-msg'), 'Adresa zkopírována'); });
 })();
