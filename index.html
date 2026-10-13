@@ -12,7 +12,8 @@
 </head>
 <body>
 <!--BODY-->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<p id="sr-status" class="sr" role="status" aria-live="polite"></p>
+<svg class="sprite" width="0" height="0" aria-hidden="true">
   <symbol id="logoMarkP" viewBox="0 0 400 400">
     <rect x="12" y="12" width="376" height="376" rx="88" fill="#0B6E63"/>
     <rect x="130" y="88" width="49" height="224" rx="10" fill="#F6F6F3"/>
@@ -55,13 +56,14 @@
           <img id="ocr-img" alt="">
           <div class="ocr-body">
             <p id="ocr-status">Čtu text z obrázku</p>
-            <div class="progress"><i id="ocr-bar"></i></div>
+            <p id="ocr-detail" class="ocr-detail" hidden></p>
+            <div class="progress" role="progressbar" aria-label="Průběh čtení obrázku"><i id="ocr-bar"></i></div>
           </div>
         </div>
-        <p class="ocr-note" id="ocr-note" hidden></p>
+        <p class="ocr-note" id="ocr-note" role="alert" hidden></p>
 
         <div class="composer-bar">
-          <input type="file" id="file" accept="image/*" hidden>
+          <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/*" hidden>
           <button type="button" class="btn-ghost" id="pick">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.6-2.2h6.8L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="12.8" r="3.4"/></svg>
             Nahrát screenshot
@@ -71,7 +73,7 @@
       </div>
 
       <ul class="facts">
-        <li><span class="dot"></span>Zpráva zůstává jen u vás</li>
+        <li><span class="dot"></span>Text ani obrázek neodesíláme</li>
         <li><span class="dot"></span>Zdarma, bez registrace</li>
         <li><span class="dot"></span>Žádné reklamy</li>
       </ul>
@@ -87,7 +89,7 @@
       </div>
     </section>
 
-    <section id="result" hidden aria-live="polite"></section>
+    <section id="result" hidden></section>
   </div>
 
   <!-- ========== NAHLÁSIT POKUS ========== -->
@@ -102,9 +104,9 @@
       <div>
         <p class="mono-label">Policie ČR</p>
         <h2>Chcete to nahlásit policii?</h2>
-        <p>Policie nemá online formulář, oznámení se ale dá poslat e-mailem nebo datovkou. Pomůžeme vám ho sepsat a řekneme, kam ho poslat.</p>
+        <p>Policie ČR na svém webu online formulář pro oznámení neuvádí. Oznámení podáte osobně, poštou, datovou schránkou nebo e-mailem s elektronickým podpisem. Pomůžeme vám připravit jeho text.</p>
       </div>
-      <button type="button" class="btn btn-light" data-open-police>Sepsat oznámení <span class="arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="btn btn-light" data-open-police>Připravit oznámení <span class="arrow" aria-hidden="true">→</span></button>
     </div>
 
     <section class="block">
@@ -173,9 +175,9 @@
       <div>
         <p class="mono-label">Policie ČR</p>
         <h2>Přišli jste o peníze nebo údaje?</h2>
-        <p>Podejte oznámení na policii. Pomůžeme vám ho sepsat tak, aby v něm nic důležitého nechybělo.</p>
+        <p>Podejte oznámení na policii. Pomůžeme vám připravit text, aby v něm nic důležitého nechybělo. Podáte ho pak sami.</p>
       </div>
-      <button type="button" class="btn btn-light" data-open-police>Sepsat oznámení <span class="arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="btn btn-light" data-open-police>Připravit oznámení <span class="arrow" aria-hidden="true">→</span></button>
     </div>
   </div>
 </main>
@@ -184,8 +186,8 @@
 <dialog id="police" class="modal" aria-labelledby="police-title">
   <div class="modal-head">
     <div>
-      <p class="mono-label">Oznámení pro Policii ČR</p>
-      <h2 id="police-title">Sepíšeme to spolu</h2>
+      <p class="mono-label">Podklady pro Policii ČR</p>
+      <h2 id="police-title">Připravíme text oznámení</h2>
     </div>
     <button type="button" class="modal-close" data-close aria-label="Zavřít">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -193,14 +195,16 @@
   </div>
 
   <form class="modal-body" id="report" novalidate>
-    <p class="modal-intro">Vyplňte, co víte. Nic z toho není povinné a nic se nikam neodesílá. Na konci dostanete hotový text oznámení a adresu, kam ho poslat.</p>
+    <p class="modal-intro">Vyplňte, co víte. Kromě dvou označených polí není nic povinné. <b>Nic se nikam neodesílá.</b> Na konci dostanete text oznámení a postup, jak ho policii podat sami.</p>
 
     <fieldset class="step">
       <legend><span class="step-num">01</span>Co se stalo</legend>
-      <div class="seg" role="radiogroup" aria-label="Rozsah">
+      <div class="seg" role="radiogroup" aria-label="Rozsah" aria-required="true">
         <label class="seg-opt"><input type="radio" name="r-kind" value="attempt" checked><span>Jen pokus, o nic jsem nepřišel(a)</span></label>
         <label class="seg-opt"><input type="radio" name="r-kind" value="loss"><span>Přišel(a) jsem o peníze nebo údaje</span></label>
       </div>
+      <p class="hint" id="r-kind-hint" hidden>Odpověděli jste, že jste už na něco klikli nebo něco zaplatili. Vyberte prosím, co platí.</p>
+      <p class="field-err" id="r-kind-err" role="alert" hidden>Vyberte prosím, jestli šlo jen o pokus, nebo jste o něco přišli.</p>
       <div class="cols">
         <div class="field"><label for="r-when">Kdy to bylo</label><input id="r-when" type="text" placeholder="např. 12. 10. 2026 kolem 14:30"></div>
         <div class="field"><label for="r-channel">Jak se ozvali</label>
@@ -227,31 +231,38 @@
       <legend><span class="step-num">02</span>Popište to vlastními slovy</legend>
       <div class="field"><label for="r-desc">Co se dělo</label><textarea id="r-desc" rows="4" placeholder="Kdo psal nebo volal, co po vás chtěl a co jste udělali."></textarea></div>
       <div class="field"><label for="r-msg">Text podvodné zprávy</label><textarea id="r-msg" rows="3" placeholder="Pokud ho máte, vložte ho sem."></textarea></div>
+      <div class="checks">
+        <p class="checks-title">Co máte u sebe jako důkaz</p>
+        <label class="check"><input type="checkbox" id="r-ev-screens"><span>Screenshoty zpráv</span></label>
+        <label class="check"><input type="checkbox" id="r-ev-message"><span>Původní zprávu v telefonu nebo e-mailu</span></label>
+        <label class="check"><input type="checkbox" id="r-ev-payment"><span>Potvrzení o platbě nebo výpis</span></label>
+      </div>
     </fieldset>
 
     <fieldset class="step">
       <legend><span class="step-num">03</span>Kdo oznámení podává</legend>
-      <p class="hint">Policie tyhle údaje potřebuje, aby vás mohla kontaktovat a dát vědět, jak to dopadlo. Oznámení jde podat i anonymně, pak pole nechte prázdná.</p>
+      <p class="hint">Policie podle svých stránek u oznámení uvádí jméno, datum narození a adresu oznamovatele. Bez nich vás nemůže kontaktovat. Oznámení jde podat i anonymně, pak pole nechte prázdná.</p>
       <div class="cols">
         <div class="field"><label for="r-name">Jméno a příjmení</label><input id="r-name" type="text" autocomplete="name"></div>
         <div class="field"><label for="r-born">Datum narození</label><input id="r-born" type="text" placeholder="např. 1. 5. 1960"></div>
         <div class="field field-wide"><label for="r-address">Adresa bydliště</label><input id="r-address" type="text" autocomplete="street-address"></div>
         <div class="field field-wide"><label for="r-contact">Telefon nebo e-mail</label><input id="r-contact" type="text"></div>
       </div>
-      <label class="check loss-only" hidden><input type="checkbox" id="r-claim"><span>Chci, aby mi pachatel škodu nahradil</span></label>
+      <label class="check loss-only" hidden><input type="checkbox" id="r-claim"><span>Chci, aby soud rozhodl o náhradě mé škody</span></label>
     </fieldset>
 
     <fieldset class="step">
-      <legend><span class="step-num">04</span>Kam to poslat</legend>
-      <div class="field"><label for="r-region">Kraj, kde bydlíte</label>
-        <select id="r-region">
+      <legend><span class="step-num">04</span>Komu je oznámení určené</legend>
+      <div class="field"><label for="r-region">Kraj, kde se to stalo nebo kde bydlíte (povinné)</label>
+        <select id="r-region" required aria-required="true">
+          <option value="" selected disabled>Vyberte kraj</option>
           <option value="krpa">Hlavní město Praha</option>
           <option value="krps">Středočeský kraj</option>
           <option value="krpc">Jihočeský kraj</option>
           <option value="krpp">Plzeňský kraj</option>
           <option value="krpk">Karlovarský kraj</option>
           <option value="krpu">Ústecký kraj</option>
-          <option value="krpl" selected>Liberecký kraj</option>
+          <option value="krpl">Liberecký kraj</option>
           <option value="krph">Královéhradecký kraj</option>
           <option value="krpe">Pardubický kraj</option>
           <option value="krpj">Kraj Vysočina</option>
@@ -260,39 +271,46 @@
           <option value="krpz">Zlínský kraj</option>
           <option value="krpt">Moravskoslezský kraj</option>
         </select>
+        <p class="field-err" id="r-region-err" role="alert" hidden>Vyberte prosím kraj, aby oznámení mělo správného adresáta.</p>
       </div>
     </fieldset>
 
     <div class="modal-actions">
-      <button type="submit" class="btn btn-primary">Sestavit oznámení <span class="arrow" aria-hidden="true">→</span></button>
+      <button type="submit" class="btn btn-primary">Připravit text oznámení <span class="arrow" aria-hidden="true">→</span></button>
     </div>
 
     <div class="out" id="report-out" hidden>
-      <p class="mono-label">Hotové oznámení</p>
+      <p class="not-sent"><b>Zatím nic nebylo odesláno.</b> Tohle je jen text oznámení. Policii ho musíte podat sami jedním ze způsobů níže.</p>
+      <p class="mono-label" id="report-out-title" tabindex="-1">Text oznámení</p>
       <pre id="report-text"></pre>
       <div class="row">
         <button type="button" class="btn btn-primary" id="copy">Zkopírovat text</button>
         <span class="copied" id="copy-msg" role="status"></span>
       </div>
 
-      <p class="mono-label send-title">Jak ho podat</p>
+      <p class="mono-label send-title">Jak ho podat (podle Policie ČR)</p>
       <ol class="send">
         <li>
-          <b>E-mailem na krajskou podatelnu</b>
-          <span>Pošlete text na <code class="addr" id="r-addr">krpl.podatelna@policie.gov.cz</code> <button type="button" class="link" id="copy-addr">zkopírovat adresu</button></span>
-          <span class="small-note">Policie u e-mailu vyžaduje uznávaný elektronický podpis. Kdo ho nemá, zvolí raději datovou schránku nebo služebnu.</span>
-          <a class="way-link" id="r-mail" href="#">Otevřít v e-mailu <span aria-hidden="true">↗</span></a>
+          <b>Osobně na kterémkoli oddělení policie</b>
+          <span>Ústně do protokolu. Vezměte s sebou tenhle text a telefon se zprávami. Policie oznámení přijmout musí na kterémkoli útvaru.</span>
+        </li>
+        <li>
+          <b>Písemně poštou</b>
+          <span>Text vytiskněte, podepište a pošlete doporučeně, nebo ho doneste osobně a nechte si potvrdit převzetí.</span>
         </li>
         <li>
           <b>Datovou schránkou</b>
-          <span>Pokud ji máte, pošlete oznámení Policii ČR přes ni. Seznam schránek najdete na <a href="https://policie.gov.cz/e-podatelna" target="_blank" rel="noopener">policie.gov.cz/e-podatelna</a>.</span>
+          <span>Pošlete ho datovou schránkou krajského ředitelství. Seznam schránek: <a href="https://policie.gov.cz/datove-schranky-utvaru" target="_blank" rel="noopener">policie.gov.cz/datove-schranky-utvaru</a>.</span>
         </li>
         <li>
-          <b>Osobně na kterékoli služebně</b>
-          <span>Vezměte s sebou tenhle text a telefon se zprávami. Policie oznámení přijmout musí, ať přijdete kamkoli.</span>
+          <b>E-mailem s uznávaným elektronickým podpisem</b>
+          <span>Na podatelnu krajského ředitelství <code class="addr" id="r-addr">nejdřív vyberte kraj</code> <button type="button" class="link" id="copy-addr">zkopírovat adresu</button></span>
+          <span class="small-note">Policie u e-mailu uvádí uznávaný elektronický podpis. Běžný e-mail bez podpisu nemusí stačit, proto raději zvolte jiný způsob, pokud podpis nemáte.</span>
+          <a class="way-link" id="r-mail" href="#">Otevřít e-mail <span aria-hidden="true">↗</span></a>
+          <span class="small-note" id="r-mail-note"></span>
         </li>
       </ol>
-      <p class="small-note">Přiložte screenshoty zpráv a u ztráty peněz i výpis z účtu. Zprávy zatím nemažte, jsou to důkazy.</p>
+      <p class="small-note">Přiložte screenshoty zpráv a u ztráty peněz i výpis z účtu. Zprávy zatím nemažte, jsou to důkazy. Zdroj postupu: <a href="https://policie.gov.cz/trestni-oznameni-odkaz" target="_blank" rel="noopener">policie.gov.cz</a>.</p>
     </div>
   </form>
 </dialog>
@@ -314,7 +332,7 @@
           <span>PEBMedia</span>
           <span class="logo-tag">Protect</span>
         </a>
-        <p>Pomáháme lidem nenaletět podvodníkům. Zdarma, bez reklam a bez ukládání vašich zpráv.</p>
+        <p>Pomáháme lidem nenaletět podvodníkům. Zdarma, bez reklam. Text ani obrázky zpráv nikam neodesíláme.</p>
       </div>
 
       <div class="footer-col">
@@ -353,6 +371,7 @@
 </footer>
 <!--/BODY-->
 <script src="assets/analyzer.js"></script>
+<script src="assets/report.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

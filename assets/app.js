@@ -1,11 +1,18 @@
-/* PEBMedia Protect: rozhraní */
+/* PEBMedia Protect: rozhraní
+ * Text zprávy ani obrázek se nikam neodesílají. OCR běží v prohlížeči a všechny jeho soubory
+ * (Tesseract.js, worker, WASM jádro, jazyková data) se načítají z vlastní domény (assets/ocr).
+ */
 (function () {
   'use strict';
 
   var A = window.PPAnalyzer;
+  var R = window.PPReport;
   var $ = function (id) { return document.getElementById(id); };
-  var TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-  var state = { analysis: null, answers: {} };
+  var OCR_BASE = new URL('assets/ocr/', document.baseURI).href;
+  // Skutečná velikost souborů stahovaných při prvním čtení obrázku (tesseract.min.js, worker.min.js,
+  // tesseract-core-simd-lstm.wasm.js, ces + eng traineddata.gz) = 9 306 978 B.
+  var OCR_DOWNLOAD_MB = '9,3';
+  var state = { analysis: null, answers: {}, source: 'text', ocr: null };
   var EBOOK_URL = 'https://pebmedia.cz/obchod/ebooky/';
   var EBOOK_COVER = 'assets/img/ebook-nenech-se-nachytat.webp';
 
@@ -15,6 +22,7 @@
     });
   }
   function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
+  function announce(msg) { var el = $('sr-status'); el.textContent = ''; setTimeout(function () { el.textContent = msg; }, 30); }
 
   var EXAMPLES = {
     posta: 'Česká pošta: Vaše zásilka nemohla být doručena, adresa je neúplná. Uhraďte doplatek 1,50 Kč do 24 hodin, jinak bude vrácena odesílateli: https://сeskapоsta-cz.info/track',
@@ -23,53 +31,101 @@
     vinted: 'Dobrý den, zboží jsem vám zaplatil přes Vinted, kurýr si věc vyzvedne. Pro přijetí platby klikněte zde a potvrďte kartu: vinted-cz.payment-secure.online/item/552'
   };
 
-  /* ---------- Přepínání stránek ---------- */
+  /* ---------- Stránky a historie (tlačítko Zpět) ---------- */
   var VIEWS = ['check', 'report', 'help'];
-  function showView(v) {
+  var HASH = { check: '#kontrola', report: '#nahlasit', help: '#pomoc' };
+
+  function setView(v) {
     VIEWS.forEach(function (name) {
       $('view-' + name).hidden = name !== v;
       $('nav-' + name).removeAttribute('aria-current');
     });
     $('nav-' + v).setAttribute('aria-current', 'page');
+  }
+  // Historie prohlížeče: v některých vložených prohlížečích může být zakázaná, aplikace pak funguje bez ní.
+  function hist(method, st, hash) { try { history[method](st, '', hash); } catch (e) { /* bez historie */ } }
+  // Přechod, který se zapíše do historie prohlížeče, aby fungovalo tlačítko Zpět.
+  function go(v, opts) {
+    opts = opts || {};
+    var st = { view: v, result: !!opts.result };
+    var hash = opts.result ? '#vysledek' : HASH[v];
+    hist(opts.replace ? 'replaceState' : 'pushState', st, hash);
+    applyState(st);
+  }
+  var ignoreNextPop = false;
+  function applyState(st) {
+    if (dlg.open) { closePolice(true); return; }
+    setView(st.view);
+    if (st.view === 'check') {
+      if (st.result && state.analysis) {
+        $('ask').hidden = true;
+        if (!$('result').innerHTML) renderResult();
+        $('result').hidden = false;
+      } else resetCheck(true);
+    }
     window.scrollTo(0, 0);
+  }
+  window.addEventListener('popstate', function (e) {
+    if (ignoreNextPop) { ignoreNextPop = false; return; }
+    var st = e.state || { view: viewFromHash(), result: false };
+    if (st.modal) return;
+    applyState(st);
+  });
+  function viewFromHash() {
+    if (location.hash === '#pomoc') return 'help';
+    if (location.hash === '#nahlasit') return 'report';
+    return 'check';
   }
   each('[data-view]', function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var v = a.getAttribute('data-view');
       if (v === 'check' && (a.classList.contains('logo') || a.hasAttribute('data-top'))) resetCheck();
-      showView(v);
+      go(v);
     });
   });
-  if (location.hash === '#pomoc') showView('help');
-  if (location.hash === '#nahlasit') showView('report');
 
   /* ---------- Kontrola ---------- */
-  function runCheck() {
+  function runCheck(source) {
     var text = $('msg').value;
     if (!text.trim()) { $('msg').focus(); return; }
+    state.source = source === 'ocr' ? 'ocr' : 'text';
+    if (state.source !== 'ocr') state.ocr = null;
     state.analysis = A.analyze(text);
     state.answers = {};
     state.reportChoice = null;
     state.lastLevel = null;
     $('ask').hidden = true;
     renderResult();
-    window.scrollTo(0, 0);
+    go('check', { result: true });
+    var h = $('verdict-title');
+    if (h) h.focus();
+    var ev = A.evaluate(state.analysis, {});
+    announce('Výsledek kontroly: ' + VERDICT[ev.level].pill + '.');
   }
-  function resetCheck() {
+  // Nová kontrola: vyčistí pole, výsledek i předchozí stav OCR, aby se nemíchaly dvě zprávy.
+  function resetCheck(keepText) {
     $('ask').hidden = false;
     $('result').hidden = true;
-    $('result').innerHTML = '';
+    if (!keepText) $('result').innerHTML = '';
+    $('ocr').hidden = true;
+    $('ocr-note').hidden = true;
+    if (!keepText) {
+      $('msg').value = '';
+      state.analysis = null;
+      state.ocr = null;
+      state.source = 'text';
+    }
   }
 
-  $('go').addEventListener('click', runCheck);
+  $('go').addEventListener('click', function () { runCheck('text'); });
   $('msg').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCheck();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCheck('text');
   });
   each('[data-ex]', function (b) {
     b.addEventListener('click', function () {
       $('msg').value = EXAMPLES[b.getAttribute('data-ex')];
-      runCheck();
+      runCheck('text');
     });
   });
 
@@ -96,21 +152,21 @@
     ]
   };
 
-  // Sestaví seznam důvodů (odkazy + nálezy v textu) a přidělí jim čísla
-  function buildReasons(a) {
+  // Seznam důvodů (odkazy + nálezy v textu) s čísly
+  function buildReasons(a, ev) {
     var list = [];
     a.urls.forEach(function (u) {
       var s = u.summary;
-      var head, sev = u.worst === 'none' ? 'info' : u.worst;
+      var sev = u.worst === 'none' ? 'info' : u.worst;
       var rest = u.findings.slice();
-      if (s.kind === 'fake') {
-        head = { title: 'Odkaz se tváří jako ' + s.brand, detail: 'Ve skutečnosti vede na úplně jiný web. Pravý je ' + s.real + '.' };
-        rest = rest.filter(function (f) { return f.title.indexOf('Vydává se za') !== 0; });
-      } else if (s.kind === 'official') {
-        head = { title: 'Odkaz vede na pravý web ' + s.brand, detail: rest[0].detail };
-        rest = [];
+      var head;
+      if (s.kind === 'official') {
+        head = { title: 'Odkaz vede na oficiální web ' + s.brand, detail: rest[0].detail };
+        rest = rest.filter(function (f) { return f.code !== 'official'; });
       } else if (rest.length) {
-        head = { title: rest[0].title, detail: rest[0].detail };
+        var order = { high: 0, mid: 1, low: 2, info: 3, ok: 4 };
+        rest.sort(function (x, y) { return order[x.sev] - order[y.sev]; });
+        head = rest[0];
         rest = rest.slice(1);
       } else {
         head = { title: 'Odkaz vede na web, který neznáme', detail: 'Sám o sobě nemusí být nebezpečný. Pokud po vás chce údaje nebo platbu, buďte opatrní.' };
@@ -118,10 +174,11 @@
       list.push({ sev: sev, title: head.title, detail: head.detail, url: u, more: rest, spans: [[u.start, u.end]] });
     });
     a.textFindings.forEach(function (f) {
-      list.push({ sev: f.sev, title: f.title, detail: f.detail, spans: f.spans });
+      var cleared = ev && ev.cleared && ev.cleared[f.rule];
+      list.push({ sev: cleared ? 'info' : f.sev, title: f.title + (cleared ? ' (ověřeno)' : ''), detail: f.detail, spans: f.spans });
     });
-    var order = { high: 0, mid: 1, ok: 2, low: 3, info: 4 };
-    list.sort(function (x, y) { return order[x.sev] - order[y.sev]; });
+    var ord = { high: 0, mid: 1, ok: 2, low: 3, info: 4 };
+    list.sort(function (x, y) { return ord[x.sev] - ord[y.sev]; });
     list.forEach(function (r, i) { r.n = i + 1; });
     return list;
   }
@@ -131,23 +188,33 @@
     var out = '';
     u.chars.forEach(function (c, i) {
       var ch = esc(c.ch);
-      if (c.kind !== 'plain') ch = '<span class="fake" title="Písmeno z azbuky">' + ch + '</span>';
+      if (c.kind !== 'plain') ch = '<span class="fake" title="Písmeno z jiné abecedy">' + ch + '</span>';
       out += i < subLen ? '<span class="dim">' + ch + '</span>' : '<span class="main">' + ch + '</span>';
     });
     return out;
   }
 
+  // Zvýraznění ve zprávě. Když se dvě místa překrývají, čísla obou důvodů se zobrazí u jednoho zvýraznění.
   function bubbleHtml(text, reasons) {
     var marks = [];
     reasons.forEach(function (r) {
       r.spans.forEach(function (sp, i) {
-        marks.push({ s: sp[0], e: sp[1], n: i === 0 ? r.n : null, sev: r.sev, url: r.url });
+        marks.push({ s: sp[0], e: sp[1], nums: i === 0 ? [r.n] : [], sev: r.sev });
       });
     });
     marks.sort(function (x, y) { return x.s - y.s || (y.e - y.s) - (x.e - x.s); });
-    var out = '', pos = 0;
+    var merged = [];
+    var sevOrder = { high: 0, mid: 1, ok: 2, low: 3, info: 4 };
     marks.forEach(function (m) {
-      if (m.s < pos) return;
+      var last = merged[merged.length - 1];
+      if (last && m.s < last.e) {
+        last.e = Math.max(last.e, m.e);
+        last.nums = last.nums.concat(m.nums);
+        if (sevOrder[m.sev] < sevOrder[last.sev]) last.sev = m.sev;
+      } else merged.push({ s: m.s, e: m.e, nums: m.nums.slice(), sev: m.sev });
+    });
+    var out = '', pos = 0;
+    merged.forEach(function (m) {
       out += esc(text.slice(pos, m.s));
       var inner = '';
       var seg = text.slice(m.s, m.e);
@@ -155,7 +222,8 @@
         var ch = seg[i];
         inner += /[Ѐ-ӿͰ-Ͽ]/.test(ch) ? '<span class="fake">' + esc(ch) + '</span>' : esc(ch);
       }
-      out += '<mark class="hl ' + m.sev + '">' + inner + (m.n ? '<sup>' + m.n + '</sup>' : '') + '</mark>';
+      m.nums.sort(function (a, b) { return a - b; });
+      out += '<mark class="hl ' + m.sev + '">' + inner + (m.nums.length ? '<sup>' + m.nums.join(',') + '</sup>' : '') + '</mark>';
       pos = m.e;
     });
     return out + esc(text.slice(pos));
@@ -164,36 +232,51 @@
   function renderResult() {
     var a = state.analysis;
     var ev = A.evaluate(a, state.answers);
+    var base = A.evaluate(a, {});
     var v = VERDICT[ev.level];
-    var reasons = buildReasons(a);
+    var reasons = buildReasons(a, ev);
+    var fromOcr = state.source === 'ocr';
 
     var h = '<p class="back"><button type="button" class="link" data-act="again">← Zkontrolovat jinou zprávu</button></p>';
 
-    var base = A.evaluate(a, {});
     var answeredAny = Object.keys(state.answers).length > 0;
     var changed = state.lastLevel && state.lastLevel !== ev.level;
     state.lastLevel = ev.level;
     if (answeredAny && ev.level !== base.level) {
       v = {
         pill: v.pill,
-        title: ev.level === 'low' ? 'Podle vašich odpovědí to vypadá v pořádku' : ev.level === 'mid' ? 'Pořád tu něco nesedí' : 'Teď už je to skoro jisté: je to podvod',
+        title: ev.level === 'low' ? 'Podle vašich odpovědí to vypadá spíš v pořádku' : ev.level === 'mid' ? 'Pořád tu něco nesedí' : 'Vypadá to na podvod ještě víc',
         say: ev.level === 'low' ? 'Riziko jsme snížili podle toho, co jste odpověděli. Peníze ani údaje ale nikomu neposílejte, dokud si to sami neověříte.' : v.say
       };
     }
+    // U textu z obrázku neuklidňujeme: OCR mohlo část zprávy přečíst špatně.
+    if (fromOcr && ev.level === 'low') {
+      v = { pill: v.pill, title: 'V přečteném textu jsme nenašli varovné znaky', say: 'Text jsme četli z obrázku a mohli jsme něco přečíst špatně, hlavně v odkazu. Zkontrolujte ho níže, nebo zprávu zkopírujte a vložte jako text.' };
+    }
+
     h += '<div class="verdict' + (changed ? ' is-updated' : '') + '" id="verdict"><div class="verdict-top"><span class="mono-label">' +
       (answeredAny ? 'Přehodnoceno podle vašich odpovědí' : 'Výsledek kontroly') + '</span><span class="risk ' + ev.level + '">' + v.pill + '</span></div>' +
-      '<h1>' + v.title + '</h1><p>' + v.say + '</p>' +
+      '<h1 id="verdict-title" tabindex="-1">' + esc(v.title) + '</h1><p>' + esc(v.say) + '</p>' +
       '<div class="meter ' + ev.level + '" aria-hidden="true"><i></i><i></i><i></i></div>' +
       '<div class="meter-legend" aria-hidden="true"><span>Nízké</span><span>Zvýšené</span><span>Vysoké</span></div></div>';
+
+    if (fromOcr) {
+      var q = state.ocr && state.ocr.quality === 'uncertain';
+      h += '<div class="ocr-banner' + (q ? ' is-uncertain' : '') + '"><p class="mono-label">Text z obrázku</p>' +
+        '<p>' + (q ? 'Obrázek se četl hůř, text může obsahovat chyby. ' : '') +
+        'Text jsme přečetli z obrázku. Čtení může splést podobné znaky, hlavně v odkazu, a písmena z jiných abeced pozná jen u vloženého textu. Opravte ho podle originálu a zkontrolujte znovu.</p>' +
+        '<label class="sr" for="ocr-edit">Přečtený text</label><textarea id="ocr-edit" rows="5" spellcheck="false">' + esc(a.text) + '</textarea>' +
+        '<button type="button" class="btn btn-secondary" data-act="recheck">Zkontrolovat opravený text</button></div>';
+    }
 
     if (ev.level !== 'low') {
       if (state.reportChoice === 'no') {
         h += '<div class="report-ask is-done"><p>Dobře. Kdybyste si to rozmysleli, podvod můžete nahlásit kdykoli. Podvodnou SMS stačí přeposlat na <b>7726</b>.</p>' +
           '<button type="button" class="link" data-act="report-page">Další možnosti nahlášení</button></div>';
       } else {
-        h += '<div class="report-ask"><div><p class="mono-label">Nahlášení</p><p class="report-ask-q">Chcete tenhle pokus nahlásit policii?</p>' +
-          '<p class="report-ask-sub">Pomůžeme vám sepsat oznámení. Zabere to pár minut a nic se neodešle bez vás.</p></div>' +
-          '<div class="report-ask-btns"><button type="button" class="btn btn-primary" data-act="report-yes">Ano, nahlásit <span class="arrow" aria-hidden="true">→</span></button>' +
+        h += '<div class="report-ask"><div><p class="mono-label">Nahlášení</p><p class="report-ask-q">Chcete to nahlásit policii?</p>' +
+          '<p class="report-ask-sub">Pomůžeme vám připravit text oznámení. Policii ho pak pošlete nebo zanesete sami, za vás nic neodešleme.</p></div>' +
+          '<div class="report-ask-btns"><button type="button" class="btn btn-primary" data-act="report-yes">Připravit oznámení <span class="arrow" aria-hidden="true">→</span></button>' +
           '<button type="button" class="btn btn-secondary" data-act="report-no">Teď ne</button></div></div>';
       }
     }
@@ -224,33 +307,34 @@
 
     // Otázky ve stylu kalkulačky: odpovězené shrnuté, aktuální jedna
     var qs = A.questionsFor(a);
-    var done = qs.filter(function (q) { return state.answers[q.id]; }).length;
-    var current = qs.filter(function (q) { return !state.answers[q.id]; })[0];
+    var done = qs.filter(function (qq) { return state.answers[qq.id]; }).length;
+    var current = qs.filter(function (qq) { return !state.answers[qq.id]; })[0];
     h += '<section class="block"><p class="mono-label">Upřesnění</p><h2>Pomozte nám to upřesnit</h2><div class="card quiz">' +
       '<div class="quiz-head"><span class="mono-label">' + (current ? 'Otázka ' + (done + 1) + ' z ' + qs.length : 'Hotovo') + '</span>' +
-      '<div class="progress"><i style="width:' + Math.round((done / qs.length) * 100) + '%"></i></div>' +
+      '<div class="progress"><i data-progress="' + Math.round((done / qs.length) * 100) + '"></i></div>' +
       (done ? '<span class="live risk ' + ev.level + '">' + v.pill + '</span>' : '') + '</div>';
     if (done) {
-      h += '<ul class="answered">' + qs.filter(function (q) { return state.answers[q.id]; }).map(function (q) {
-        var opt = q.options.filter(function (o) { return o.v === state.answers[q.id]; })[0];
-        return '<li><span class="q">' + esc(q.text) + '</span><span class="a">' + esc(opt.label) + '</span>' +
-          '<button type="button" class="link" data-undo="' + q.id + '">změnit</button>' +
-          (ev.notes[q.id] ? '<p class="note">' + esc(ev.notes[q.id]) + '</p>' : '') + '</li>';
+      h += '<ul class="answered">' + qs.filter(function (qq) { return state.answers[qq.id]; }).map(function (qq) {
+        var opt = qq.options.filter(function (o) { return o.v === state.answers[qq.id]; })[0];
+        return '<li><span class="q">' + esc(qq.text) + '</span><span class="a">' + esc(opt.label) + '</span>' +
+          '<button type="button" class="link" data-undo="' + qq.id + '">změnit</button>' +
+          (ev.notes[qq.id] ? '<p class="note">' + esc(ev.notes[qq.id]) + '</p>' : '') + '</li>';
       }).join('') + '</ul>';
     }
     if (current) {
-      h += '<div class="quiz-body"><p class="quiz-q">' + esc(current.text) + '</p><div class="opts">' + current.options.map(function (o) {
+      h += '<div class="quiz-body"><p class="quiz-q" id="quiz-q" tabindex="-1">' + esc(current.text) + '</p><div class="opts">' + current.options.map(function (o) {
         return '<button type="button" class="opt" data-q="' + current.id + '" data-v="' + o.v + '">' + esc(o.label) + '</button>';
       }).join('') + '</div></div>';
     } else {
       var order = { low: 0, mid: 1, high: 2 };
       var dir = order[ev.level] - order[base.level];
       var RE = {
-        up: 'Vaše odpovědi riziko zvýšily. Teď už to vypadá vážněji než na první pohled, takže buďte hodně opatrní.',
+        up: 'Vaše odpovědi riziko zvýšily. Teď to vypadá vážněji než na první pohled, takže buďte hodně opatrní.',
         down: 'Podle vašich odpovědí to vypadá líp, než se zdálo. Pořád ale platí, že peníze ani údaje nikomu neposílejte, dokud si to neověříte.',
-        same: ev.level === 'low' ? 'Vaše odpovědi hodnocení potvrdily. Nic podezřelého jsme nenašli.' : 'Vaše odpovědi hodnocení potvrdily. Na tuhle zprávu raději nereagujte.'
+        same: ev.level === 'low' ? 'Vaše odpovědi hodnocení potvrdily.' : 'Vaše odpovědi hodnocení potvrdily. Na tuhle zprávu raději nereagujte.'
       };
-      h += '<div class="reeval ' + ev.level + '"><p class="mono-label">Přehodnoceno</p>' +
+      if (dir < 0 && ev.level !== 'low') RE.down = 'Podle vašich odpovědí to vypadá o něco líp. Zpráva ale pořád obsahuje varovné znaky, které odpovědi nevysvětlí.';
+      h += '<div class="reeval ' + ev.level + '" id="reeval" tabindex="-1"><p class="mono-label">Přehodnoceno</p>' +
         '<div class="reeval-row">' +
           (dir !== 0 ? '<span class="risk ' + base.level + ' is-old">' + VERDICT[base.level].pill + '</span><span class="reeval-arrow" aria-hidden="true">→</span>' : '') +
           '<span class="risk ' + ev.level + '">' + v.pill + '</span></div>' +
@@ -267,35 +351,50 @@
       '<b>Chcete podvody poznat dřív, než vám přijdou?</b>' +
       '<span>Nenech se nachytat vysvětluje nejčastější triky podvodníků srozumitelně a s příklady. Hodí se pro celou rodinu.</span>' +
       '<span class="ebook-card-cta">Prohlédnout e-book <span class="arrow" aria-hidden="true">→</span></span></span></a>';
-    h += '<p class="disclaimer">Hodnocení je orientační. Vychází ze známých triků podvodníků, úplně nový podvod nemusí poznat.</p>';
+    h += '<p class="disclaimer">Hodnocení je orientační odhad podle známých triků podvodníků. Nový nebo neobvyklý podvod nemusí poznat a bezpečnost zprávy nezaručuje.</p>';
 
     var box = $('result');
     box.innerHTML = h;
     box.hidden = false;
+    // Šířku průběhu nastavujeme přes CSSOM, aby nebyl potřeba inline styl (CSP).
+    each('#result [data-progress]', function (el) { el.style.width = el.getAttribute('data-progress') + '%'; });
 
-    box.querySelector('[data-act="again"]').addEventListener('click', function () { resetCheck(); $('msg').focus(); window.scrollTo(0, 0); });
+    box.querySelector('[data-act="again"]').addEventListener('click', function () { resetCheck(); go('check'); $('msg').focus(); });
     var hb = box.querySelector('[data-act="help"]');
-    if (hb) hb.addEventListener('click', function () { showView('help'); });
+    if (hb) hb.addEventListener('click', function () { go('help'); });
     var tv = box.querySelector('[data-act="to-verdict"]');
-    if (tv) tv.addEventListener('click', function () { $('verdict').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    if (tv) tv.addEventListener('click', function () { $('verdict').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('verdict-title').focus({ preventScroll: true }); });
     var ry = box.querySelector('[data-act="report-yes"]');
     if (ry) ry.addEventListener('click', function () { openPolice(true); });
     var rn = box.querySelector('[data-act="report-no"]');
     if (rn) rn.addEventListener('click', function () { state.reportChoice = 'no'; rerender(); });
     var rp = box.querySelector('[data-act="report-page"]');
-    if (rp) rp.addEventListener('click', function () { showView('report'); });
+    if (rp) rp.addEventListener('click', function () { go('report'); });
+    var rc = box.querySelector('[data-act="recheck"]');
+    if (rc) rc.addEventListener('click', function () {
+      $('msg').value = $('ocr-edit').value;
+      state.ocr = state.ocr ? { quality: 'edited' } : null;
+      runCheck('ocr-edited');
+    });
     Array.prototype.forEach.call(box.querySelectorAll('.opt'), function (b) {
       b.addEventListener('click', function () {
         state.answers[b.getAttribute('data-q')] = b.getAttribute('data-v');
+        var before = state.lastLevel;
         rerender();
-        var re = document.querySelector('.reeval');
-        if (re) re.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var after = state.lastLevel;
+        var re = $('reeval');
+        var next = $('quiz-q');
+        if (re) { re.scrollIntoView({ behavior: 'smooth', block: 'center' }); re.focus({ preventScroll: true }); }
+        else if (next) next.focus({ preventScroll: true });
+        announce(before !== after ? 'Hodnocení se změnilo na: ' + VERDICT[after].pill + '.' : (re ? 'Hodnocení zůstává: ' + VERDICT[after].pill + '.' : 'Další otázka.'));
       });
     });
     Array.prototype.forEach.call(box.querySelectorAll('[data-undo]'), function (b) {
       b.addEventListener('click', function () {
         delete state.answers[b.getAttribute('data-undo')];
         rerender();
+        var next = $('quiz-q');
+        if (next) next.focus();
       });
     });
   }
@@ -313,7 +412,7 @@
       var s = document.createElement('script');
       s.src = src;
       s.onload = function () { resolve(); };
-      s.onerror = function () { reject(new Error('load')); };
+      s.onerror = function () { reject(new Error('network')); };
       document.head.appendChild(s);
     });
   }
@@ -340,48 +439,94 @@
           resolve(c);
         } catch (e) { resolve(file); } finally { URL.revokeObjectURL(url); }
       };
-      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
       img.src = url;
     });
   }
 
+  function ocrStatus(text, detail, pct) {
+    $('ocr-status').textContent = text;
+    $('ocr-detail').textContent = detail || '';
+    $('ocr-detail').hidden = !detail;
+    if (typeof pct === 'number') $('ocr-bar').style.width = Math.max(3, Math.min(100, pct)) + '%';
+  }
+  function ocrNote(msg, kind) {
+    var n = $('ocr-note');
+    n.textContent = msg;
+    n.className = 'ocr-note' + (kind ? ' is-' + kind : '');
+    n.hidden = false;
+  }
+
   var busy = false;
   function runOcr(file) {
-    if (!file || !/^image\//.test(file.type) || busy) return;
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      resetCheck();
+      go('check', { replace: true });
+      ocrNote('Tenhle soubor neumíme přečíst. Nahrajte snímek obrazovky jako obrázek (PNG nebo JPG), nebo text zprávy zkopírujte a vložte do pole.', 'error');
+      return;
+    }
+    if (busy) return;
     busy = true;
     resetCheck();
-    showView('check');
+    go('check', { replace: true });
     $('ocr').hidden = false;
-    $('ocr-note').hidden = true;
-    $('ocr-bar').style.width = '5%';
-    $('ocr-status').textContent = 'Čtu text z obrázku';
+    var firstTime = !window.Tesseract;
+    ocrStatus('Připravuji čtení textu', firstTime ? 'Poprvé se stahuje čtečka textu (asi ' + OCR_DOWNLOAD_MB + ' MB). Příště už to bude rychlejší.' : '', 3);
+    announce('Čtu text z obrázku.');
     var r = new FileReader();
     r.onload = function () { $('ocr-img').src = r.result; };
     r.readAsDataURL(file);
+    var stage = 'download';
 
-    loadScript(TESSERACT_SRC)
+    loadScript(OCR_BASE + 'tesseract.min.js')
       .then(function () { return prepareImage(file); })
       .then(function (img) {
+        if (!img) { stage = 'image'; throw new Error('image'); }
         return window.Tesseract.recognize(img, 'ces+eng', {
+          workerPath: OCR_BASE + 'worker.min.js',
+          corePath: OCR_BASE,
+          langPath: OCR_BASE + 'lang',
+          workerBlobURL: false,
           logger: function (m) {
-            if (m.status === 'recognizing text') $('ocr-bar').style.width = Math.max(10, Math.round(m.progress * 100)) + '%';
+            var p = typeof m.progress === 'number' ? m.progress : 0;
+            if (m.status === 'loading tesseract core') ocrStatus('Stahuji čtečku textu', $('ocr-detail').textContent, 5 + p * 25);
+            else if (m.status === 'loading language traineddata') ocrStatus('Stahuji češtinu a angličtinu pro čtení', $('ocr-detail').textContent, 30 + p * 35);
+            else if (m.status === 'initializing api' || m.status === 'initializing tesseract') ocrStatus('Připravuji čtení', '', 66);
+            else if (m.status === 'recognizing text') { stage = 'recognize'; ocrStatus('Čtu text z obrázku', '', 70 + p * 30); }
           }
         });
       })
       .then(function (res) {
-        var text = (res && res.data && res.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
-        if (!text) throw new Error('empty');
+        var raw = (res && res.data && res.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
+        var conf = res && res.data ? res.data.confidence : 0;
+        var text = A.normalizeOcrText(raw);
+        var q = A.assessOcr(text, conf);
         $('ocr').hidden = true;
-        var cur = $('msg').value.trim();
-        $('msg').value = cur ? cur + '\n\n' + text : text;
-        $('ocr-note').textContent = 'Text jsme z obrázku přečetli. Zkontrolujte hlavně odkaz, čtení může splést podobné znaky.';
-        $('ocr-note').hidden = false;
-        runCheck();
+        if (!q.readable) {
+          // Nečitelný výsledek nevyhodnocujeme, aby nevzniklo falešné „nízké riziko“.
+          $('msg').value = '';
+          ocrNote('Z obrázku se nepodařilo spolehlivě přečíst text, takže zprávu nemůžeme posoudit. Opište sem prosím aspoň odkaz a hlavní větu, nebo nahrajte ostřejší snímek.', 'error');
+          announce('Text z obrázku se nepodařilo přečíst.');
+          $('msg').focus();
+          return;
+        }
+        $('msg').value = text;
+        state.ocr = { quality: q.quality, confidence: q.confidence };
+        runCheck('ocr');
       })
       .catch(function () {
         $('ocr').hidden = true;
-        $('ocr-note').textContent = 'Z obrázku se text přečíst nepodařilo. Opište sem prosím aspoň odkaz a hlavní větu ze zprávy.';
-        $('ocr-note').hidden = false;
+        if (stage === 'download') {
+          ocrNote(navigator.onLine === false
+            ? 'Jste offline, takže se čtečka textu nemohla stáhnout. Připojte se k internetu, nebo text zprávy opište do pole.'
+            : 'Čtečku textu se nepodařilo stáhnout. Zkuste to za chvíli znovu, nebo text zprávy opište do pole.', 'error');
+        } else if (stage === 'image') {
+          ocrNote('Obrázek se nepodařilo otevřít. Zkuste jiný snímek obrazovky, nebo text zprávy opište do pole.', 'error');
+        } else {
+          ocrNote('Z obrázku se text přečíst nepodařilo. Opište sem prosím aspoň odkaz a hlavní větu ze zprávy.', 'error');
+        }
+        announce('Čtení obrázku se nepovedlo.');
       })
       .then(function () { busy = false; });
   }
@@ -410,7 +555,64 @@
   });
 
   /* ---------- Už se to stalo ---------- */
+  // Pořadí podle naléhavosti: kde rozhodují minuty, je nahoře.
   var SCENARIOS = [
+    {
+      title: 'Poslal(a) jsem peníze', urgent: true,
+      steps: [
+        ['Hned volejte bance.', 'Na číslo ze zadní strany karty nebo z aplikace. Požádejte o zastavení nebo vrácení platby. Rozhodují minuty.'],
+        ['Už nic neposílejte.', 'Podvodníci často chtějí další platbu, třeba na „vrácení“ té první.'],
+        ['Schovejte si důkazy.', 'Zprávy, screenshoty, čísla, odkazy a potvrzení plateb. Nic zatím nemažte.'],
+        ['Podejte oznámení na policii.', 'Text oznámení vám pomůžeme připravit, tlačítko najdete na konci této stránky.']
+      ],
+      tip: 'Pozor na lidi, kteří vám později nabídnou vrácení peněz za poplatek. Bývají to další podvodníci.'
+    },
+    {
+      title: 'Zadal(a) jsem údaje z karty', urgent: true,
+      steps: [
+        ['Kartu hned zablokujte.', 'V aplikaci banky, nebo na čísle ze zadní strany karty.'],
+        ['Zavolejte bance.', 'Řekněte, co se stalo. Může zastavit čekající platby.'],
+        ['Nic, co jste sami nezadali, neschvalujte.', 'Když vám přijde žádost o potvrzení platby, odmítněte ji.'],
+        ['Projděte výpis.', 'Neznámé platby u banky co nejdřív reklamujte.'],
+        ['Podejte oznámení na policii.', 'Text oznámení vám pomůžeme připravit, tlačítko najdete na konci této stránky.']
+      ]
+    },
+    {
+      title: 'Řekl(a) jsem někomu kód z SMS', urgent: true,
+      steps: [
+        ['Hned volejte bance nebo dané službě.', 'Kód mohl schválit platbu, přihlášení nebo přidání karty do cizího mobilu.'],
+        ['Šlo o WhatsApp? Znovu se přihlaste.', 'Tím útočníka odhlásíte. Pak si zapněte ověření pomocí PIN.'],
+        ['Varujte známé.', 'Z vašeho účtu jim mohou přijít prosby o peníze.']
+      ]
+    },
+    {
+      title: 'Nainstaloval(a) jsem aplikaci nebo pustil(a) někoho do počítače', urgent: true,
+      steps: [
+        ['Odpojte se od internetu.', 'Vypněte Wi-Fi i mobilní data, aby cizí člověk ztratil přístup.'],
+        ['Z jiného telefonu volejte bance.', 'Ať zablokuje bankovnictví i kartu.'],
+        ['Aplikaci odinstalujte.', 'Hlavně AnyDesk, TeamViewer, RustDesk nebo cokoli, co neznáte.'],
+        ['Z jiného zařízení si změňte hesla.', 'K bance, e-mailu a dalším důležitým účtům.'],
+        ['Nechte zařízení zkontrolovat.', 'Antivirem nebo u odborníka.']
+      ]
+    },
+    {
+      title: 'Zadal(a) jsem heslo',
+      steps: [
+        ['Šlo o bankovnictví? Hned volejte bance.', 'Ať zkontroluje účet a případně zablokuje přístup.'],
+        ['Hned heslo změňte.', 'Přihlaste se přes oficiální aplikaci nebo web, který napíšete ručně.'],
+        ['Změňte ho i všude jinde, kde ho používáte.', 'Podvodníci ho zkusí i na e-mailu, Facebooku a dalších službách.'],
+        ['Zapněte dvoufázové ověření a odhlaste ostatní zařízení.', 'Obojí najdete v nastavení zabezpečení účtu.']
+      ]
+    },
+    {
+      title: 'Poslal(a) jsem fotku občanského průkazu',
+      steps: [
+        ['Ohlaste nebezpečí zneužití průkazu.', 'Bez odkladu na kterémkoli obecním úřadu obce s rozšířenou působností (v Praze na úřadu kterékoli městské části Praha 1 až 22), nebo na nejbližší služebně policie.'],
+        ['Požádejte o nový průkaz.', 'Ohlášením starý průkaz přestane platit. O nový je potřeba požádat do 15 dnů.'],
+        ['Poslal(a) jste i údaje z karty nebo účtu?', 'Postupujte i podle bodu „Zadal(a) jsem údaje z karty“ a zavolejte bance.']
+      ],
+      tip: 'Postup vychází z popisu služby na portal.gov.cz. U jiných dokladů, například pasu nebo řidičského průkazu, se může lišit, ověřte ho na úřadě.'
+    },
     {
       title: 'Klikl(a) jsem na odkaz, ale nic nevyplnil(a)',
       steps: [
@@ -419,177 +621,116 @@
         ['Pár dní hlídejte účty.', 'Všímejte si neobvyklých SMS, přihlášení nebo plateb.']
       ],
       tip: 'Samotné kliknutí většinou nic vážného nezpůsobí. Nejdůležitější je nic nevyplnit.'
-    },
-    {
-      title: 'Zadal(a) jsem heslo',
-      steps: [
-        ['Hned heslo změňte.', 'Přihlaste se přes oficiální aplikaci nebo web, který napíšete ručně.'],
-        ['Změňte ho i všude jinde, kde ho používáte.', 'Podvodníci ho zkusí i na e-mailu, Facebooku a dalších službách.'],
-        ['Zapněte dvoufázové ověření.', 'Pak se do účtu nedostane nikdo jen s heslem.'],
-        ['Odhlaste ostatní zařízení.', 'Najdete to v nastavení zabezpečení účtu.'],
-        ['Šlo o bankovnictví? Volejte bance.', 'Ověří, jestli se s účtem něco nedělo.']
-      ]
-    },
-    {
-      title: 'Zadal(a) jsem údaje z karty',
-      steps: [
-        ['Kartu hned zablokujte.', 'V aplikaci banky, nebo na čísle ze zadní strany karty.'],
-        ['Zavolejte bance.', 'Řekněte, co se stalo. Může zastavit čekající platby.'],
-        ['Nic, co jste sami nezadali, neschvalujte.', 'Když vám přijde žádost o potvrzení platby, odmítněte ji.'],
-        ['Projděte výpis.', 'Neznámé platby u banky co nejdřív reklamujte.'],
-        ['Podejte oznámení na policii.', 'Podklady si připravíte níže.']
-      ]
-    },
-    {
-      title: 'Poslal(a) jsem peníze',
-      steps: [
-        ['Hned volejte bance.', 'Požádejte o zastavení nebo vrácení platby. Rozhodují minuty.'],
-        ['Už nic neposílejte.', 'Podvodníci často chtějí další platbu, třeba na vrácení té první.'],
-        ['Schovejte si důkazy.', 'Zprávy, screenshoty, čísla, odkazy a potvrzení plateb.'],
-        ['Podejte oznámení na policii.', 'Na kterékoli služebně. Podklady si připravíte níže.']
-      ],
-      tip: 'Pozor na lidi, kteří vám později nabídnou vrácení peněz za poplatek. Jsou to další podvodníci.'
-    },
-    {
-      title: 'Nainstaloval(a) jsem aplikaci nebo pustil(a) někoho do počítače',
-      steps: [
-        ['Odpojte se od internetu.', 'Vypněte Wi-Fi i mobilní data.'],
-        ['Z jiného telefonu volejte bance.', 'Ať zablokuje bankovnictví i kartu.'],
-        ['Aplikaci odinstalujte.', 'Hlavně AnyDesk, TeamViewer, RustDesk nebo cokoli, co neznáte.'],
-        ['Z jiného zařízení si změňte hesla.', 'K bance, e-mailu a dalším důležitým účtům.'],
-        ['Nechte zařízení zkontrolovat.', 'Antivirem nebo u odborníka.']
-      ]
-    },
-    {
-      title: 'Řekl(a) jsem někomu kód z SMS',
-      steps: [
-        ['Hned volejte bance nebo dané službě.', 'Kód mohl schválit platbu, přihlášení nebo kartu v cizím mobilu.'],
-        ['U WhatsAppu se znovu přihlaste.', 'Tím útočníka vyhodíte. Pak si zapněte ověření pomocí PIN.'],
-        ['Varujte známé.', 'Z vašeho účtu jim mohou přijít prosby o peníze.']
-      ]
     }
   ];
 
   $('scenarios').innerHTML = SCENARIOS.map(function (s) {
-    return '<details><summary>' + esc(s.title) + '</summary><div class="inner"><ol>' +
+    return '<details' + (s.urgent ? ' class="is-urgent"' : '') + '><summary>' + (s.urgent ? '<span class="urgent-tag">Jednejte hned</span>' : '') + '<span class="sum-title">' + esc(s.title) + '</span></summary><div class="inner"><ol>' +
       s.steps.map(function (st) { return '<li><div><b>' + esc(st[0]) + '</b><span>' + esc(st[1]) + '</span></div></li>'; }).join('') +
       '</ol>' + (s.tip ? '<p class="tip">' + esc(s.tip) + '</p>' : '') + '</div></details>';
   }).join('');
-  // Vždy otevřená jen jedna položka
   each('#scenarios details', function (d) {
     d.addEventListener('toggle', function () {
       if (d.open) each('#scenarios details', function (o) { if (o !== d) o.open = false; });
     });
   });
 
-  /* ---------- Oznámení pro policii (vyskakovací okno) ---------- */
+  /* ---------- Příprava oznámení pro policii (vyskakovací okno) ---------- */
   var dlg = $('police');
-  var REGIONS = {
-    krpa: 'Krajské ředitelství policie hl. m. Prahy', krps: 'Krajské ředitelství policie Středočeského kraje',
-    krpc: 'Krajské ředitelství policie Jihočeského kraje', krpp: 'Krajské ředitelství policie Plzeňského kraje',
-    krpk: 'Krajské ředitelství policie Karlovarského kraje', krpu: 'Krajské ředitelství policie Ústeckého kraje',
-    krpl: 'Krajské ředitelství policie Libereckého kraje', krph: 'Krajské ředitelství policie Královéhradeckého kraje',
-    krpe: 'Krajské ředitelství policie Pardubického kraje', krpj: 'Krajské ředitelství policie kraje Vysočina',
-    krpb: 'Krajské ředitelství policie Jihomoravského kraje', krpm: 'Krajské ředitelství policie Olomouckého kraje',
-    krpz: 'Krajské ředitelství policie Zlínského kraje', krpt: 'Krajské ředitelství policie Moravskoslezského kraje'
-  };
   var CHANNEL_GUESS = [[/whats\s?app|messenger|telegram|signal/i, 'přes WhatsApp nebo jiný chat'], [/vinted|bazos|bazar|sbazar/i, 'přes inzerát nebo bazar'], [/@|e-?mail/i, 'e-mailem']];
 
   function val(id) { return $(id).value.trim(); }
-  function kind() { var r = document.querySelector('input[name="r-kind"]:checked'); return r ? r.value : 'attempt'; }
-
+  function kind() { var r = dlg.querySelector('input[name="r-kind"]:checked'); return r ? r.value : ''; }
   function syncKind() {
     var loss = kind() === 'loss';
     each('.loss-only', function (el) { el.hidden = !loss; });
   }
-  each('input[name="r-kind"]', function (r) { r.addEventListener('change', syncKind); });
+  each('input[name="r-kind"]', function (r) { r.addEventListener('change', function () { syncKind(); $('r-kind-err').hidden = true; }); });
 
-  function syncRegion() { $('r-addr').textContent = $('r-region').value + '.podatelna@policie.gov.cz'; }
-  $('r-region').addEventListener('change', function () { syncRegion(); if (!$('report-out').hidden) buildReport(); });
+  function syncRegion() {
+    var reg = $('r-region').value;
+    $('r-addr').textContent = reg ? reg + '.podatelna@policie.gov.cz' : 'nejdřív vyberte kraj';
+  }
+  $('r-region').addEventListener('change', function () { syncRegion(); $('r-region-err').hidden = true; if (!$('report-out').hidden) buildReport(); });
 
   function prefillReport() {
     var a = state.analysis;
     if (!a) return;
     if (!$('r-msg').value) $('r-msg').value = a.text.trim();
     if (!$('r-link').value && a.urls.length) $('r-link').value = a.urls.map(function (u) { return u.raw + (u.foreign ? ' (skutečná adresa: ' + u.ascii + ')' : ''); }).join(', ');
-    if (!$('r-when').value) $('r-when').value = new Date().toLocaleDateString('cs-CZ');
     CHANNEL_GUESS.some(function (g) {
       if (g[0].test(a.text)) { $('r-channel').value = g[1]; return true; }
       return false;
     });
+    // Když uživatel u otázek odpověděl, že už klikl nebo zaplatil, nepředvybíráme „jen pokus“.
+    var acted = state.answers.acted === 'yes';
+    each('input[name="r-kind"]', function (r) { r.checked = !acted && r.value === 'attempt'; });
+    $('r-kind-hint').hidden = !acted;
   }
 
   function openPolice(fromResult) {
     if (fromResult) prefillReport();
+    else if (!$('view-help').hidden) {
+      // Ze sekce „Už se to stalo“ nepředpokládáme, že šlo jen o pokus.
+      each('input[name="r-kind"]', function (r) { r.checked = false; });
+    }
     syncKind();
     syncRegion();
     if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    hist('pushState', { modal: true, view: (history.state && history.state.view) || 'check', result: history.state && history.state.result }, location.hash);
     dlg.querySelector('.modal-body').scrollTop = 0;
   }
-  function closePolice() { if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
+  function closePolice(fromHistory) {
+    if (typeof dlg.close === 'function') { if (dlg.open) dlg.close(); } else dlg.removeAttribute('open');
+    if (!fromHistory && history.state && history.state.modal) { ignoreNextPop = true; history.back(); }
+  }
   each('[data-open-police]', function (b) { b.addEventListener('click', function () { openPolice(false); }); });
-  dlg.querySelector('[data-close]').addEventListener('click', closePolice);
-  dlg.addEventListener('click', function (e) { if (e.target === dlg) closePolice(); });
+  dlg.querySelector('[data-close]').addEventListener('click', function () { closePolice(false); });
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) closePolice(false); });
+  dlg.addEventListener('cancel', function (e) { e.preventDefault(); closePolice(false); });
 
   function buildReport() {
-    var loss = kind() === 'loss';
-    var checked = Array.prototype.map.call(dlg.querySelectorAll('.checks input:checked'), function (c) { return c.value; });
-    var region = $('r-region').value;
-    var L = [];
-    L.push('Policie České republiky');
-    L.push(REGIONS[region]);
-    L.push('');
-    L.push('Věc: Oznámení o ' + (loss ? 'podvodu' : 'pokusu o podvod'));
-    L.push('');
-    L.push('Oznamovatel');
-    if (val('r-name') || val('r-born') || val('r-address') || val('r-contact')) {
-      L.push('Jméno a příjmení: ' + (val('r-name') || 'neuvedeno'));
-      L.push('Datum narození: ' + (val('r-born') || 'neuvedeno'));
-      L.push('Bydliště: ' + (val('r-address') || 'neuvedeno'));
-      if (val('r-contact')) L.push('Kontakt: ' + val('r-contact'));
-    } else {
-      L.push('Oznámení podávám anonymně.');
-    }
-    L.push('');
-    L.push('Co se stalo');
-    var intro = (val('r-when') ? 'Dne ' + val('r-when') + ' ' : '') + 'mě kontaktoval neznámý člověk ' + $('r-channel').value +
-      (val('r-from') ? ' z čísla nebo adresy ' + val('r-from') : '') + '.';
-    L.push(intro.charAt(0).toUpperCase() + intro.slice(1));
-    if (val('r-desc')) L.push(val('r-desc'));
-    if (val('r-link')) L.push('Zpráva obsahovala odkaz: ' + val('r-link'));
-    if (checked.length) { L.push(''); checked.forEach(function (c) { L.push('• ' + c); }); }
-    L.push('');
-    L.push('Škoda');
-    if (loss) {
-      L.push('Přišel(a) jsem o ' + (val('r-amount') || 'částku, kterou ještě upřesním') + '.');
-      if (val('r-account')) L.push('Peníze odešly na účet: ' + val('r-account'));
-      L.push($('r-claim').checked ? 'Žádám, aby mi pachatel způsobenou škodu nahradil.' : '');
-    } else {
-      L.push('Žádná škoda mi nevznikla, šlo o pokus. Oznamuji ho, aby se mohl prověřit a nenaletěl někdo další.');
-    }
-    L.push('');
-    L.push('Důkazy');
-    L.push('Mám k dispozici snímky obrazovky zpráv' + (loss ? ' a potvrzení o platbě' : '') + ' a na vyžádání je předložím.');
-    if (val('r-msg')) { L.push(''); L.push('Text zprávy, jak mi přišla:'); L.push('„' + val('r-msg') + '“'); }
-    L.push('');
-    L.push('Děkuji za prošetření.');
-    L.push('');
-    L.push((val('r-name') || '') + (val('r-name') ? ', ' : '') + new Date().toLocaleDateString('cs-CZ'));
-
-    var text = L.filter(function (line, i, arr) { return !(line === '' && arr[i - 1] === ''); }).join('\n');
-    $('report-text').textContent = text;
-    var addr = region + '.podatelna@policie.gov.cz';
-    var subject = loss ? 'Oznámení o podvodu' : 'Oznámení o pokusu o podvod';
-    $('r-mail').href = 'mailto:' + addr + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text.slice(0, 1800));
-    return text;
+    var res = R.build({
+      kind: kind(),
+      region: $('r-region').value,
+      when: val('r-when'),
+      channel: $('r-channel').value,
+      from: val('r-from'),
+      link: val('r-link'),
+      amount: val('r-amount'),
+      account: val('r-account'),
+      actions: Array.prototype.map.call(dlg.querySelectorAll('.checks input:checked'), function (c) { return c.value; }),
+      desc: val('r-desc'),
+      msg: val('r-msg'),
+      name: val('r-name'),
+      born: val('r-born'),
+      address: val('r-address'),
+      contact: val('r-contact'),
+      claim: $('r-claim').checked,
+      evidence: { screens: $('r-ev-screens').checked, payment: $('r-ev-payment').checked, message: $('r-ev-message').checked }
+    });
+    if (res.error) return res;
+    $('report-text').textContent = res.text;
+    var m = R.mailto(res.address, res.subject, res.text);
+    $('r-mail').href = m.href;
+    $('r-mail-note').textContent = m.includesBody
+      ? 'E-mail se otevře i s textem oznámení.'
+      : 'Text je na e-mail moc dlouhý, aby se do něj vložil sám. Otevře se jen e-mail s předmětem, text do něj vložte tlačítkem Zkopírovat text.';
+    return res;
   }
 
   $('report').addEventListener('submit', function (e) {
     e.preventDefault();
-    buildReport();
+    var bad = null;
+    if (!kind()) { $('r-kind-err').hidden = false; bad = bad || dlg.querySelector('input[name="r-kind"]'); }
+    if (!$('r-region').value) { $('r-region-err').hidden = false; bad = bad || $('r-region'); }
+    if (bad) { bad.focus(); return; }
+    var res = buildReport();
+    if (res.error) { $('r-region-err').hidden = false; $('r-region').focus(); return; }
     $('report-out').hidden = false;
     $('copy-msg').textContent = '';
     $('report-out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('report-out-title').focus({ preventScroll: true });
   });
 
   function copyText(text, node, msgEl, okMsg) {
@@ -605,6 +746,13 @@
       else fallback();
     } catch (err) { fallback(); }
   }
-  $('copy').addEventListener('click', function () { copyText($('report-text').textContent, $('report-text'), $('copy-msg'), 'Zkopírováno'); });
-  $('copy-addr').addEventListener('click', function () { copyText($('r-addr').textContent, $('r-addr'), $('copy-msg'), 'Adresa zkopírována'); });
+  $('copy').addEventListener('click', function () { copyText($('report-text').textContent, $('report-text'), $('copy-msg'), 'Zkopírováno. Zatím nic nebylo odesláno.'); });
+  $('copy-addr').addEventListener('click', function () {
+    if (!$('r-region').value) { $('r-region-err').hidden = false; $('r-region').focus(); return; }
+    copyText($('r-addr').textContent, $('r-addr'), $('copy-msg'), 'Adresa zkopírována');
+  });
+
+  /* ---------- Start ---------- */
+  hist('replaceState', { view: viewFromHash(), result: false }, HASH[viewFromHash()]);
+  setView(viewFromHash());
 })();

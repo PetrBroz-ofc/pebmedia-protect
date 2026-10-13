@@ -56,6 +56,7 @@ button { font-family: inherit; }
 ::selection { background: var(--accent); color: #fff; }
 svg { flex: none; }
 [hidden] { display: none !important; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .container { width: 100%; max-width: 760px; margin: 0 auto; padding-inline: 24px; }
@@ -63,8 +64,8 @@ svg { flex: none; }
 
 /* Malé technické popisky jako na pebmedia.cz */
 .mono-label, .eyebrow {
-  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+  font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft);
 }
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--accent-ink); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; flex: none; }
@@ -140,7 +141,8 @@ svg { flex: none; }
   font: inherit; font-size: 17px; line-height: 1.55; padding: 20px 22px 10px; resize: vertical; min-height: 150px;
 }
 .composer textarea:focus { outline: none; }
-.composer textarea::placeholder { color: var(--ink-faint); opacity: .8; }
+.composer textarea::placeholder { color: var(--ink-soft); opacity: 1; }
+::placeholder { color: var(--ink-soft); opacity: 1; }
 .composer-bar {
   display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 10px 10px 10px 12px; border-top: 1px solid var(--border);
@@ -170,7 +172,8 @@ svg { flex: none; }
 .btn-ghost:hover { color: var(--ink); background: var(--bg); }
 .link {
   font: inherit; color: var(--ink-soft); background: none; border: 0; padding: 0; cursor: pointer;
-  font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+  font-size: 15px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+  min-height: 44px; display: inline-flex; align-items: center;
 }
 .link:hover { color: var(--ink); }
 
@@ -204,7 +207,7 @@ svg { flex: none; }
 .verdict .mono-label { color: rgba(255, 255, 255, 0.55); }
 .risk {
   display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 100px;
-  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
 }
 .risk::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .risk.high { background: #FBE3E0; color: var(--danger); }
@@ -217,7 +220,7 @@ svg { flex: none; }
 .meter.low i:nth-child(-n+1) { background: var(--accent-bright); }
 .meter.mid i:nth-child(-n+2) { background: #F2B451; }
 .meter.high i { background: #FF8A80; }
-.meter-legend { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
+.meter-legend { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
 .meter-legend span:nth-child(2) { text-align: center; }
 .meter-legend span:nth-child(3) { text-align: right; }
 
@@ -311,7 +314,7 @@ svg { flex: none; }
   display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
 }
 .callout p { font-weight: 600; flex: 1 1 240px; }
-.disclaimer { font-size: 13px; color: var(--ink-faint); margin-top: 28px; }
+.disclaimer { font-size: 14.5px; color: var(--ink-soft); margin-top: 28px; }
 
 /* ---------------------------------- Pomoc ---------------------------------- */
 .alarm {
@@ -410,7 +413,7 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m);
   padding: 20px; display: flex; flex-direction: column; gap: 6px;
 }
-.way-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.way-tag { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
 .way h3 { font-size: 19px; }
 .way p:not(.way-tag) { color: var(--ink-soft); font-size: 15px; }
 .way code, .send code { font-family: var(--font-mono); font-size: 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
@@ -469,11 +472,11 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 .send li > span { color: var(--ink-soft); }
 .send .addr { overflow-wrap: anywhere; }
 .send .way-link { padding-top: 4px; }
-.small-note { font-size: 13px; color: var(--ink-faint); }
+.small-note { font-size: 14px; color: var(--ink-soft); }
 
 
 /* ---------------------------------- Přehodnocení ---------------------------------- */
-.quiz-head .live { margin-left: auto; font-size: 10.5px; padding: 3px 9px; }
+.quiz-head .live { margin-left: auto; font-size: 12px; padding: 3px 9px; }
 .reeval { margin: 4px 22px 22px; padding: 18px 20px; border-radius: var(--radius-m); background: var(--bg); border: 1px solid var(--border); display: grid; gap: 8px; animation: reeval-in .5s var(--ease); }
 .reeval.high { background: var(--danger-tint); border-color: rgba(178, 59, 59, 0.22); }
 .reeval.mid { background: var(--warn-tint); border-color: rgba(143, 91, 0, 0.2); }
@@ -505,10 +508,40 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 .ebook-card:hover .arrow { transform: translateX(3px); }
 @media (max-width: 440px) { .ebook-card { align-items: flex-start; gap: 14px; } .ebook-card img { width: 68px; } }
 
+
+/* ---------- Stavy OCR, chyby formuláře, upozornění (audit 2026-10) ---------- */
+.ocr-detail { font-size: 14px; color: var(--ink-soft); margin: -2px 0 8px; font-weight: 400; }
+.ocr-note { margin: 0 22px 14px; font-size: 15px; color: var(--ink-soft); }
+.ocr-note.is-error { color: var(--danger); background: var(--danger-tint); border-radius: var(--radius-m); padding: 12px 14px; font-weight: 500; }
+.ocr-banner {
+  margin-top: 16px; padding: 18px 20px; border-radius: var(--radius-l); display: grid; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+}
+.ocr-banner.is-uncertain { border-left-color: var(--warn); background: var(--warn-tint); }
+.ocr-banner p:not(.mono-label) { font-size: 15.5px; }
+.ocr-banner textarea {
+  width: 100%; font: inherit; font-size: 15.5px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius-s); padding: 11px 13px; resize: vertical;
+}
+.ocr-banner .btn { justify-self: start; }
+.field-err { color: var(--danger); font-size: 14.5px; font-weight: 500; }
+.not-sent { padding: 14px 16px; border-radius: var(--radius-m); background: var(--warn-tint); border: 1px solid rgba(143, 91, 0, 0.25); font-size: 15.5px; }
+.urgent-tag {
+  flex: none; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--danger); background: var(--danger-tint); border-radius: 100px; padding: 3px 9px;
+}
+.acc summary { display: grid; grid-template-columns: 1fr 32px; column-gap: 14px; row-gap: 6px; align-items: center; }
+.acc summary .urgent-tag { grid-column: 1; justify-self: start; }
+.acc summary .sum-title { grid-column: 1; }
+.acc summary::after { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+#verdict-title:focus, #quiz-q:focus, #reeval:focus, #report-out-title:focus { outline: none; }
+#quiz-q:focus-visible, #reeval:focus-visible, #report-out-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+#verdict-title:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 4px; }
+
 /* ---------------------------------- Patička ---------------------------------- */
 /* Tmavá patička: černá z palety PEBMedia, teal jen jako akcent. */
 .site-footer {
-  --f-ink: #F6F6F3; --f-soft: rgba(246, 246, 243, 0.66); --f-faint: rgba(246, 246, 243, 0.42); --f-line: rgba(246, 246, 243, 0.12);
+  --f-ink: #F6F6F3; --f-soft: rgba(246, 246, 243, 0.72); --f-faint: rgba(246, 246, 243, 0.62); --f-line: rgba(246, 246, 243, 0.12);
   margin-top: 96px; background: var(--ink); color: var(--f-ink);
   border-radius: 28px 28px 0 0; overflow: hidden;
 }
@@ -535,7 +568,7 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 .site-footer .logo { color: var(--f-ink); }
 .site-footer .logo:hover { color: #fff; }
 .footer-brand p { color: var(--f-soft); font-size: 14.5px; max-width: 290px; margin-top: 14px; }
-.footer-col-title { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--f-faint); margin-bottom: 14px; display: block; }
+.footer-col-title { font-family: var(--font-mono); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--f-soft); margin-bottom: 14px; display: block; }
 .footer-col a, .footer-col > span { display: block; font-size: 14.5px; color: var(--f-soft); padding: 5px 0; text-decoration: none; transition: color .2s var(--ease); }
 .footer-col a:hover { color: #fff; }
 .footer-col b { color: #FF9A90; font-family: var(--font-display); font-size: 16px; margin-left: 4px; }
@@ -566,7 +599,7 @@ input:focus, select:focus, .field textarea:focus { outline: none; border-color: 
 }
 .footer-bottom p { max-width: 46em; }
 .footer-legal { display: flex; gap: 8px 20px; flex-wrap: wrap; }
-.footer-legal a { color: var(--f-soft); text-decoration: none; }
+.footer-legal a { color: var(--f-soft); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 .footer-legal a:hover { color: #fff; }
 .site-footer :focus-visible { outline-color: var(--accent-bright); }
 

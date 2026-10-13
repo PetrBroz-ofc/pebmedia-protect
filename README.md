@@ -1,36 +1,45 @@
 # PEBMedia Protect
 
 Bezplatná webová aplikace, která pomáhá rozpoznat podvodné SMS, e-maily a odkazy a poradí, co dělat, když už se něco stalo.
-Vše běží v prohlížeči uživatele, nic se neodesílá na server.
+Text zprávy ani obrázek se neodesílají: analýza i čtení obrázků (OCR) běží v prohlížeči a všechny soubory se načítají z vlastní domény.
+
+Výsledek je orientační odhad podle pravidel, ne záruka bezpečnosti.
 
 ## Struktura
 
 ```
-index.html            stránka aplikace
-assets/analyzer.js    pravidla a vyhodnocení (bez závislostí, testovatelné v Node)
-assets/app.js         rozhraní, čtení screenshotů, pomoc obětem, podklady pro policii
-assets/style.css      vzhled v zelené paletě PEBMedia, světlý i tmavý režim
-test/run.js           rychlý test na ukázkových podvodech: node test/run.js
-vercel.json           bezpečnostní hlavičky pro Vercel
+index.html                 stránka aplikace (kontrola, nahlášení pokusu, pomoc po podvodu, okno s oznámením)
+assets/analyzer.js         pravidla, rozbor odkazů, vyhodnocení, pomocné funkce pro OCR (bez závislostí)
+assets/report.js           sestavení textu oznámení pro Policii ČR (čistá funkce, bez DOM)
+assets/app.js              rozhraní, historie a tlačítko Zpět, OCR, formulář
+assets/style.css           vzhled podle design systému pebmedia.cz
+assets/fonts.css, fonts/   písma hostovaná lokálně (GDPR)
+assets/ocr/                Tesseract.js 5.1.1, worker, WASM jádro (SIMD i bez SIMD) a jazyková data ces + eng
+                           (bajtově shodné s balíčky z npm, licence Apache-2.0 a MIT)
+vercel.json                CSP, HSTS a další bezpečnostní hlavičky
+docs/                      návrh oddílu do zásad ochrany osobních údajů
+test/run.js                regresní testy v Node (bez sítě a bez API)
+test/cases/                korpus zpráv, odkazů, odpovědí a OCR s očekáváním a důvodem
+test/browser/              testy v prohlížeči (Playwright): síť, CSP, OCR na 10 obrázcích, formulář, XSS, mobil
 ```
 
-## Co umí verze 0.1
+## Testy
 
-* Najde v textu odkazy, i bez https a www.
-* Odhalí písmena z cyrilice a řečtiny v adrese a v textu.
-* Pozná napodobení zhruba 35 značek, za které se podvodníci v Česku vydávají (pošta, dopravci, banky, státní správa, eDálnice, Vinted a další), včetně překlepů a triku s oficiální doménou na začátku adresy.
-* Upozorní na zkracovače odkazů, rizikové koncovky, IP adresy, trik se zavináčem a http.
-* V textu hledá nátlak, platby, žádosti o údaje, falešného bankéře, Ahoj mami, vzdálený přístup, výhry, investice a bazarové podvody.
-* Doptá se podle typu zprávy a vyhodnocení zpřesní.
-* Čte screenshoty přes Tesseract.js (čeština + angličtina), tmavé snímky převrací.
-* Sekce Už se to stalo: postup pro 6 situací a generátor podkladů k oznámení.
+```
+node test/run.js                         # regresní testy, při selhání exit kód 1
+python3 test/browser/make_fixtures.py    # jednou: vygeneruje testovací obrázky
+python3 test/browser/e2e.py              # testy v Chromiu proti lokálnímu serveru s hlavičkami z vercel.json
+```
+
+Testy s `review: true` mají sporné očekávání a čekají na odborné posouzení. Jejich selhání se vypíše, ale neovlivní výsledek.
+
+## Zásady pro úpravy
+
+* Seznam oficiálních domén v `analyzer.js` obsahuje jen ověřené domény (web odpovídá značce nebo na ni přesměrovává). Neověřenou doménu nepřidávejte.
+* Samotný název značky v adrese nesmí znamenat vysoké riziko. Vysoké riziko vyžaduje rizikovou strukturu adresy (napodobenina, subdoména, překlep, písmena z jiné abecedy, bezplatný hosting, riziková koncovka).
+* Odpovědi na doplňující otázky nesmí odstranit zásadní varovné signály. Hlídají to invarianty v `test/run.js`.
+* Nové pravidlo vždy doplňte testem podvodné i legitimní zprávy.
 
 ## Nasazení
 
-Statický web, žádný build. Stačí nový repozitář a projekt na Vercelu (doporučeno protect.pebmedia.cz).
-
-## Další kroky
-
-1. GitHub Action, která denně stáhne otevřené seznamy phishingových domén do `data/blocklist.json`.
-2. Rozšíření seznamu značek a testovacích vzorků o skutečné podvodné zprávy.
-3. Sekce na pebmedia.cz, která projekt představí.
+Statický web bez buildu, plánovaně protect.pebmedia.cz na Vercelu. Před zveřejněním je potřeba doplnit oddíl o Protectu do zásad ochrany osobních údajů na pebmedia.cz (návrh v `docs/`).
