@@ -24,6 +24,7 @@ assets/guides.js           nouzový plán, průvodce telefonátem, trénink (či
 assets/report.js           sestavení textu oznámení pro Policii ČR (čistá funkce, bez DOM)
 assets/app.js              rozhraní, historie a tlačítko Zpět, OCR, formulář
 assets/style.css           vzhled podle design systému pebmedia.cz
+assets/pebai.js, pebai.css PEBAi, asistent PEBMedia (zatím ve vývoji, nic neodesílá)
 assets/fonts.css, fonts/   písma hostovaná lokálně (GDPR)
 assets/ocr/                Tesseract.js 5.1.1, worker, WASM jádro (SIMD i bez SIMD) a jazyková data ces
                            (bajtově shodné s balíčky z npm, licence Apache-2.0 a MIT)
