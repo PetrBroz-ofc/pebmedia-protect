@@ -138,36 +138,7 @@
     return { level: level, signs: signs, steps: steps, emergency: emergency, report158: hard || (authority && yes('pressure')) };
   }
 
-  /* ---------- Trénink ---------- */
-  // Vymyšlené ukázky. scam: true = podvod. Testy hlídají, že je analyzátor hodnotí stejně.
-  var TRAINING = [
-    { id: 't-parcel', scam: true,
-      text: 'PPL: Vaše zásilka čeká na doplatek cla 39 Kč. Zaplaťte do dnešní půlnoci, jinak bude vrácena: https://ppl-cz.delivery-fee.top/pay',
-      explain: 'Adresa jen napodobuje PPL. Skutečná doména je delivery-fee.top. K tomu malá částka a termín „do půlnoci“.' },
-    { id: 't-train', scam: false,
-      text: 'Ahoj, vlak má zpoždění asi 20 minut. Večeři klidně dejte bez nás, dorazíme kolem osmé.',
-      explain: 'Nic po vás nechce: žádné peníze, odkaz ani údaje. Tak vypadá běžná zpráva.' },
-    { id: 't-dad', scam: true,
-      text: 'Ahoj tati, tohle je moje nové číslo, starý mobil mi spadl do vody. Můžeš mi rychle poslat 8 900 Kč? Zítra ti to vrátím.',
-      explain: 'Nové číslo a hned prosba o peníze. Než cokoli pošlete, zavolejte na číslo, které máte u blízkého uložené.' },
-    { id: 't-tax', scam: true,
-      text: 'Finanční správa: Máte nárok na vrácení přeplatku daně 4 210 Kč. Pro výplatu vyplňte údaje platební karty: https://vraceni-dane.online/form',
-      explain: 'Úřad po vás nikdy nechce údaje z karty přes odkaz v SMS. Přeplatek se vrací na účet, ne „přes kartu“.' },
-    { id: 't-dentist', scam: false,
-      text: 'Připomínáme zítřejší kontrolu u zubaře v 10:30. Pokud nemůžete přijít, dejte nám prosím vědět.',
-      explain: 'Jen připomínka, nic nechce zaplatit ani vyplnit. Kdybyste si nebyli jistí, zavolejte do ordinace na číslo, které znáte.' },
-    { id: 't-bazar', scam: true,
-      text: 'Dobrý den, zboží beru. Zaplatím přes Bazoš doručení, peníze si převezmete tady: https://bazos-cz.safe-pay.shop/prijem',
-      explain: 'Při prodeji nikdy nemusíte nic vyplňovat, abyste peníze dostali. Odkaz vede na safe-pay.shop, ne na Bazoš.' },
-    { id: 't-bank-call', scam: true,
-      text: 'Banka: Zachytili jsme podezřelou platbu 15 000 Kč z vašeho účtu. Pokud jste ji neprovedli, ihned volejte na číslo 228 000 000.',
-      explain: 'Zpráva tlačí, abyste zavolali na číslo z ní. Bance volejte jen na číslo ze zadní strany karty nebo z aplikace.' },
-    { id: 't-order', scam: false,
-      text: 'Vaše objednávka č. 2041887 byla odeslána. Doručení očekávejte do 2 pracovních dnů.',
-      explain: 'Jen informuje, nic nechce. Pokud jste nic neobjednali, ignorujte ji a na nic dalšího nereagujte.' }
-  ];
-
-  var api = { buildPlan: buildPlan, POLICE_PREP: POLICE_PREP, TRAINING: TRAINING, SITUATIONS: SITUATIONS, PHASES: PHASES, STEPS: STEPS, assessCall: assessCall, CALL_QUESTIONS: CALL_QUESTIONS };
+  var api = { buildPlan: buildPlan, POLICE_PREP: POLICE_PREP, SITUATIONS: SITUATIONS, PHASES: PHASES, STEPS: STEPS, assessCall: assessCall, CALL_QUESTIONS: CALL_QUESTIONS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PPGuides = api;
 })(typeof window !== 'undefined' ? window : this);

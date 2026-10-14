@@ -261,7 +261,23 @@ function reportUrl(url, pred, why) {
 
 
 /* ---------- 9. Trénink a knihovna: ukázky musí analyzátor hodnotit stejně jako text vysvětlení ---------- */
-if (G) G.TRAINING.forEach(function (t) {
+const TR = require('../assets/training.js');
+record('trénink', { id: 'pocet', why: 'Banka tréninku má 100 ukázek.' }, TR.TRAINING.length === 100, { počet: TR.TRAINING.length });
+(function () {
+  let seen = [], ok = true, rounds = 0, mixOk = true, dupOk = true;
+  while (seen.length < TR.TRAINING.length && rounds < 20) {
+    const r = TR.pickRound(8, seen);
+    const ids = r.items.map(t => t.id);
+    if (new Set(ids).size !== 8) dupOk = false;
+    if (r.items.filter(t => t.scam).length < 2 || r.items.filter(t => !t.scam).length < 2) mixOk = false;
+    if (!r.reset && ids.some(id => seen.indexOf(id) !== -1)) ok = false;
+    seen = r.reset ? ids : seen.concat(ids);
+    rounds++;
+  }
+  record('trénink', { id: 'kola-bez-opakovani', why: 'Dokud jsou neviděné ukázky, kolo neopakuje žádnou už viděnou.' }, ok && dupOk, { kol: rounds });
+  record('trénink', { id: 'kola-mix', why: 'Každé kolo má aspoň 2 podvody a 2 zprávy v pořádku.' }, mixOk, {});
+})();
+TR.TRAINING.forEach(function (t) {
   const e = A.evaluate(A.analyze(t.text), {});
   const ok = t.scam ? e.level !== 'low' : e.level === 'low';
   record('trénink', { id: t.id, why: t.scam ? 'Ukázka je podvod, kontrola ji nesmí označit za nízké riziko.' : 'Ukázka je v pořádku, kontrola ji má označit za nízké riziko.' }, ok, { vstup: t.text, výsledek: e.level });

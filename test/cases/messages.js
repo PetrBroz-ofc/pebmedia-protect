@@ -228,5 +228,11 @@ module.exports = [
     input: 'https://dalnicni-znamka-eshop.com' },
   { id: 'legit-card-info', expect: 'low',
     why: 'Informace o kartě bez žádosti o údaje.',
-    input: 'Číslo vaší karty končí 1234. Platba 349 Kč proběhla v pořádku.' }
+    input: 'Číslo vaší karty končí 1234. Platba 349 Kč proběhla v pořádku.' },
+  { id: 'legit-kid-mami', expect: 'low', why: 'Oslovení mami ze známé konverzace bez prosby o peníze.', input: 'Mami, přijdu dneska později, máme trénink.' },
+  { id: 'legit-code-dont-share', expect: 'low', why: 'Bankovní SMS s kódem a upozorněním, ať ho nikomu nesdělujete.', input: 'Kód z aplikace nikomu nesdělujte. Váš kód je 1234.' },
+  { id: 'legit-rent-deposit', expect: 'low', why: 'Kauce za byt při podpisu smlouvy je běžná.', input: 'Kauce za byt je 20 000 Kč, platí se při podpisu smlouvy.' },
+  { id: 'legit-account-closed', expect: 'low', why: 'Potvrzení zrušení účtu na žádost uživatele není výhrůžka.', input: 'Váš účet byl úspěšně zrušen na vaši žádost.' },
+  { id: 'scam-code-forward', expect: 'high', codes: ['code-ask'], why: 'Prosba o přeposlání kódu z WhatsAppu je převzetí účtu.', input: 'Ahoj, poslal jsem ti omylem šestimístný kód z WhatsAppu. Můžeš mi ho prosím přeposlat?' },
+  { id: 'scam-money-mule', expect: 'high', codes: ['mule'], why: 'Přeposílání cizích plateb přes vlastní účet je praní peněz.', input: 'Nabízíme práci: přijmete na svůj účet platby a pošlete je dál, za každou dostanete 10 %.' }
 ];

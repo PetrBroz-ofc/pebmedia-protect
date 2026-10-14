@@ -194,11 +194,22 @@ def main():
 
             pg.click('#nav-learn'); pg.wait_for_timeout(150)
             check('sekce Naučit se má trénink i knihovnu', pg.is_visible('#training') and pg.evaluate("document.querySelectorAll('.lib').length") >= 10)
-            score = 0
-            for i in range(8):
-                pg.click('#training [data-tr="scam"]'); pg.wait_for_timeout(50)
-                pg.click('#training [data-tr-next]'); pg.wait_for_timeout(50)
-            check('trénink dojde do konce a ukáže skóre', 'Správně 5 z 8' in pg.inner_text('#training'), pg.inner_text('#training')[:80])
+            def play_round():
+                texts = []
+                for i in range(8):
+                    texts.append(pg.inner_text('#training .tr-msg'))
+                    pg.click('#training [data-tr="scam"]'); pg.wait_for_timeout(40)
+                    pg.click('#training [data-tr-next]'); pg.wait_for_timeout(40)
+                return texts
+            r1 = play_round()
+            import re as _re
+            check('trénink dojde do konce a ukáže skóre', bool(_re.search(r'Správně [0-8] z 8', pg.inner_text('#training'))), pg.inner_text('#training')[:80])
+            pg.click('#training [data-tr-again]'); pg.wait_for_timeout(80)
+            r2 = play_round()
+            check('další kolo ukáže jiné zprávy', len(set(r1) | set(r2)) == 16, len(set(r1) | set(r2)))
+            pg.reload(); pg.click('#nav-learn'); pg.wait_for_timeout(80)
+            r3 = [pg.inner_text('#training .tr-msg')]
+            check('po obnovení stránky se neopakuje viděná zpráva', r3[0] not in r1 + r2)
             pg.click('#podvod-balik summary'); pg.click('#podvod-balik [data-lib-ex]'); pg.wait_for_selector('#verdict')
             check('ukázka z knihovny se zkontroluje', pg.is_visible('#view-check') and 'vysoké' in pg.inner_text('#verdict').lower())
             check('po nových režimech stále jen vlastní doména', sorted(set(u.split('/')[2] for u, m, d in reqs if u.startswith('http'))) == ['127.0.0.1:%d' % PORT])

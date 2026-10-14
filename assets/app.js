@@ -792,10 +792,19 @@
   }
 
   /* ---------- Naučit se: trénink a knihovna ---------- */
-  var tr = { i: 0, picked: null, score: 0 };
+  // Každé kolo vybere 8 zpráv ze 100. Viděné si pamatujeme jen v tomto prohlížeči, aby se neopakovaly.
+  var TR_KEY = 'pp-training-seen';
+  function trSeen() { try { return JSON.parse(localStorage.getItem(TR_KEY) || '[]'); } catch (e) { return []; } }
+  function trNewRound() {
+    var r = window.PPTraining.pickRound(8, trSeen());
+    var ids = r.items.map(function (t) { return t.id; });
+    try { localStorage.setItem(TR_KEY, JSON.stringify(r.reset ? ids : trSeen().concat(ids))); } catch (e) { /* bez paměti */ }
+    return { i: 0, picked: null, score: 0, list: r.items };
+  }
+  var tr = trNewRound();
   function renderTraining(focus) {
     var box = $('training');
-    var list = G.TRAINING;
+    var list = tr.list;
     var h;
     if (tr.i >= list.length) {
       var pct = tr.score / list.length;
@@ -804,7 +813,7 @@
         (pct === 1 ? 'Výborně, nenachytali jste se ani jednou. Pravidlo zní: když po vás někdo chce peníze, údaje nebo kód, ověřte si ho jinou cestou.'
           : pct >= 0.6 ? 'Dobrá práce. Projděte si níže triky, které vás zaskočily, a příště je poznáte hned.'
             : 'Podvodníci jsou šikovní, nic si z toho nedělejte. Projděte si níže nejčastější triky a zkuste to znovu.') +
-        '</p><button type="button" class="btn btn-primary" data-tr-again>Zkusit znovu</button></div>';
+        '</p><button type="button" class="btn btn-primary" data-tr-again>Dalších 8 zpráv <span class="arrow" aria-hidden="true">→</span></button></div>';
     } else {
       var t = list[tr.i];
       h = '<div class="quiz-head"><span class="mono-label">Zpráva ' + (tr.i + 1) + ' z ' + list.length + '</span><div class="progress"><i data-progress="' + Math.round(tr.i / list.length * 100) + '"></i></div>' +
@@ -832,7 +841,7 @@
     var nx = box.querySelector('[data-tr-next]');
     if (nx) nx.addEventListener('click', function () { tr.i++; tr.picked = null; renderTraining(true); });
     var ag = box.querySelector('[data-tr-again]');
-    if (ag) ag.addEventListener('click', function () { tr = { i: 0, picked: null, score: 0 }; renderTraining(true); });
+    if (ag) ag.addEventListener('click', function () { tr = trNewRound(); renderTraining(true); });
     if (focus && $('tr-focus')) $('tr-focus').focus();
   }
   renderTraining();
