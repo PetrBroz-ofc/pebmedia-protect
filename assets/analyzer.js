@@ -67,6 +67,9 @@
     'zasilka', 'balik', 'vraceni', 'refund', 'preplatek', 'podpora', 'support', 'account', 'ucet', 'bezpecnost',
     'customs', 'clo', 'online', 'service', 'servis', 'help', 'info', 'id', 'auth', 'confirm', 'potvrzeni'];
 
+  // Obecná slova, ze kterých podvodníci skládají celé adresy.
+  var GENERIC_WORDS = SCAM_TOKENS.concat(['cz', 'klient', 'portal', 'web', 'my', 'moje', 'eu', 'cs', 'pay', 'online', 'form', 'kontrola', 'data']);
+
   // Bezplatné hostingy a služby, kde si web nebo formulář založí kdokoli.
   // Fungují jako veřejné přípony: o vlastníkovi rozhoduje až část před nimi.
   var FREE_HOSTING = ['web.app', 'firebaseapp.com', 'pages.dev', 'workers.dev', 'vercel.app', 'netlify.app', 'github.io',
@@ -102,7 +105,7 @@
     // Žádost o zaplacení nebo poslání peněz. Pouhá zmínka o platbě (např. příchozí platba) sem nepatří.
     { id: 'payment', w: 15, cat: 'payment', title: 'Chce peníze',
       detail: 'U malých doplatků jim jde často o údaje z vaší karty. Každou žádost o peníze si ověřte jinou cestou.',
-      re: /\b(doplat\w*|poplat\w*|clo|cla|celni\w*|dobirk\w*|uhrad\w*|zaplat(te|it|i|ime|ite)|neuhrazen\w*|dluzn\w*|posl\w* (mi |nam |prosim )*(penize|castku|zaloh\w*|to na ucet|\d+)|na (muj |tento |tenhle |nasledujici )ucet|na ucet (kamarad|znam|pritel)\w*|cislo uctu|potrebuj\w* (nutne |rychle |hned |prosim )*(\d+|penize|pujcit|zaplatit|poslat)|pujc\w* (mi |na )|(je )?(nutne|potreba|musite) (\w+ )?(zaplatit|uhradit)|kauc\w*|\d{2,10}\/\d{4})\b/ },
+      re: /\b(zaplaceni (dopravy|postovneho|cla|poplatku)|ceka na (doplatek|zaplaceni|uhradu)|doplat\w*|(zaplat|uhrad|doplat)\w* (\w+ ){0,2}poplat\w*|poplat\w* (\w+ ){0,3}\d|clo|cla|celni\w*|dobirk\w*|uhrad\w*|zaplat(te|it|i|ime|ite)|neuhrazen\w*|dluzn\w*|posl\w* (mi |nam |prosim |za me )*(penize|castku|platbu|fakturu|zaloh\w*|to na ucet|\d+)|na (muj |tento |tenhle |nasledujici )ucet|na ucet (kamarad|znam|pritel)\w*|cislo uctu|potrebuj\w* (nutne |rychle |hned |prosim )*(\d+|penize|pujcit|zaplatit|poslat)|pujc\w* (mi |na )|(je )?(nutne|potreba|musite) (\w+ )?(zaplatit|uhradit)|kauc\w*|\d{2,10}\/\d{4})\b/ },
     { id: 'amount', w: 5, title: 'Uvádí částku',
       detail: 'Nízká částka má vypadat nevinně, aby vám nepřišlo divné ji zaplatit.',
       re: /\b\d{1,3}([ .,]\d{3})*([.,]\d{1,2})?\s?(kc|czk|eur|€|,-)/ },
@@ -111,13 +114,13 @@
       re: /\b(zasilk\w*|balik\w*|baliku|doruc\w*|kuryr\w*|sledovaci cislo|prepravc\w*|vyzvednout|vyzvednuti|nedorucen\w*|postovn\w*|adres\w* (je )?neuplna|neuplna adres\w*)\b/ },
     { id: 'credentials', w: 20, cat: 'credentials', title: 'Chce vaše údaje',
       detail: 'Pošta, banka ani úřad po vás přes odkaz nikdy nechtějí heslo, PIN, kartu ani kód z SMS.',
-      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualiz\w* (\w+ )?(udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|(zadej\w*|zadat|vypln\w*|dopln\w*|potvrd\w*|uved\w*|sdel\w*|aktualizuj\w*) (\w+ ){0,2}(udaje|cislo) (z |o |ke |k )?((vasi|sve|platebni) )*kart[aeuy]|(zadej\w*|zadat|vypln\w*|dopln\w*|aktualizuj\w*) (\w+ ){0,2}platebni udaje|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod|nadiktuj\w*)\b/ },
+      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualiz\w* (\w+ )?(udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|(zadej\w*|zadat|vypln\w*|dopln\w*|potvrd\w*|uved\w*|sdel\w*|aktualizuj\w*) (\w+ ){0,2}(udaje|cislo) (z |o |ke |k )?((vasi|sve|platebni) )*kart[aeuy]|(zadej\w*|zadat|vypln\w*|dopln\w*|aktualizuj\w*) (\w+ ){0,2}platebni udaje|(potvrd|aktualiz|dopln|over)\w* (\w+ )?(dorucovaci )?adres\w*|overeni (vasi |platebni )?karty|overte (si )?kartu|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod|nadiktuj\w*)\b/ },
     { id: 'bankstaff', w: 30, cat: 'bank', title: 'Scénář falešného bankéře',
       detail: 'Bezpečný účet neexistuje. Skutečná banka nikdy nechce, abyste peníze někam převáděli.',
       re: /\b(bezpecn\w* ucet|bezpecnostni\w* oddeleni\w*|podezrel\w* (transakc|platb|prihlas)\w*|vas ucet (je|byl) (ohrozen|napaden|zneuzit)\w*|prevedte (penize|uspory|prostredky)|prevest (penize|uspory|prostredky)|ochran\w* (vasich )?(uspor|penez))\b/ },
     { id: 'threat', w: 15, title: 'Straší vás',
       detail: 'Hrozí zablokováním, pokutou, exekucí nebo policií, abyste zpanikařili.',
-      re: /\b(zablokovan\w*|zablokujeme|blokac\w*|pozastaven\w*|zrusen\w* (uctu|sluzby|zasilky)|exekuc\w*|pokut\w*|trestni (oznameni|rizeni|stihani)|soudni\w*|vymahan\w*|bude vracen\w*|(ucet|sluzba|karta|stranka|profil) (\w+ )?(bude|byl\w*) (zrusen|zablokovan|pozastaven|smazan|odstranen|deaktivovan)\w*|(bude|budou) (smazan|odstranen|deaktivovan)\w*|zatcen\w*|vazb\w*|prestanete (dostavat|prijimat)\w*)\b/ },
+      re: /\b(zablokovan\w*|zablokujeme|blokac\w*|pozastaven\w*|zrusen\w* (uctu|sluzby|zasilky)|exekuc\w*|pokut\w*|trestni (oznameni|rizeni|stihani)|soudni\w*|vymahan\w*|bude vracen\w*|(ucet|sluzba|karta|stranka|profil) (\w+ )?(bude|byl\w*) (zrusen|zablokovan|pozastaven|smazan|odstranen|deaktivovan)\w*|(bude|budou) (smazan|odstranen|deaktivovan)\w*|zatcen\w*|vazb\w*|zlikvidovan\w*|na naklady (prijemce|adresata)|porusuje pravidla|napaden\w* (\d+ )?vir\w*|prestanete (dostavat|prijimat)\w*)\b/ },
     { id: 'prize', w: 15, cat: 'prize', title: 'Slibuje výhru',
       detail: 'Výhra v soutěži, do které jste se nepřihlásili, je klasická návnada.',
       re: /\b(vyhral\w*|vyhra|vyhry|gratulujeme|odmen\w*|darek zdarma|zdarma ziskat|losovani|vylosovan\w*|byli jste vybran\w*|rozdavame|kazdemu,? kdo|ziskejte \w+ za 1 kc)\b/ },
@@ -132,16 +135,16 @@
       re: /\b((prijm|prijim)\w* (na )?(svuj |vas )?ucet (\w+ )?(platby|penize)|poslete je dal|preposil\w* (penize|platby))\b/ },
     { id: 'family', w: 15, cat: 'family', title: 'Píše jako někdo z rodiny',
       detail: 'Ahoj mami nebo ahoj tati z neznámého čísla je typický začátek podvodu, který končí prosbou o peníze.',
-      re: /\b(^(mami|mamko|maminko|tati|tato|babi|babicko|dedo|dedecku)|ahoj (mami|mamko|mamino|maminko|tati|tato|tatinku|babi|babicko|dedo|dedecku)|rozbil\w* (se mi )?(telefon|mobil)|ztratil\w* (jsem )?(telefon|mobil|penezenk\w*))\b/ },
+      re: /\b(^(mami|mamko|maminko|tati|tato|babi|babicko|dedo|dedecku)|(ahoj|cau|cus|ahojky|zdravim) (mami|mamko|mamino|maminko|tati|tato|tatinku|babi|babicko|dedo|dedecku)|rozbil\w* (se mi )?(telefon|mobil)|ztratil\w* (jsem )?(telefon|mobil|penezenk\w*))\b/ },
     { id: 'newnumber', w: 10, cat: 'newnumber', title: 'Oznamuje nové číslo',
       detail: 'Samo o sobě je to běžné. Pokud ale z nového čísla přijde prosba o peníze, nejdřív zavolejte na staré číslo.',
-      re: /\b((moje )?nove cislo|uloz\w* si (ho|toto|tohle|me|moje|cislo))\b/ },
+      re: /\b((moje )?nove cislo|nov\w* (mobil|telefon)\w*|pisu z noveh\w* cisl\w*|uloz\w* si (ho|toto|tohle|me|moje|cislo))\b/ },
     { id: 'messenger', w: 10, cat: 'messenger', title: 'Chce pokračovat jinde',
       detail: 'Podvodníci rádi převádějí hovor na WhatsApp nebo Telegram, kde je bazar ani banka nechrání.',
       re: /\b(napis\w* (mi|nam) (na|pres) (whats\s?app|telegram\w*|signal|viber)|kontaktujte nas (na|pres) (whats\s?app|telegram\w*)|na telegramu|pres whats\s?app)\b/ },
     { id: 'remote', w: 30, cat: 'remote', title: 'Chce se dostat do vašeho zařízení',
       detail: 'Přes AnyDesk nebo TeamViewer by cizí člověk viděl a ovládal i vaše bankovnictví.',
-      re: /\b(anydesk|teamviewer|rustdesk|quick ?support|vzdalen\w* (pristup|sprav\w*|plo\w*)|nainstalujte (si )?(prosim )?(aplikaci|program)|stahnete (si )?(aplikaci|program))\b/ },
+      re: /\b(anydesk|teamviewer|rustdesk|quick ?support|vzdalen\w* (pristup|sprav\w*|plo\w*)|(nainstalujte|stahnete) (si )?(prosim )?(\w+ )?(aplikaci|program))\b/ },
     { id: 'refund', w: 15, cat: 'gov', title: 'Slibuje vrácení peněz',
       detail: 'Přeplatek vám nikdo nevrací přes odkaz, kde máte zadat kartu.',
       re: /\b(preplat\w*|vratk\w* dane|vraceni (penez|platby|dane|preplatku)|refundac\w*|narok na vraceni)\b/ },
@@ -172,6 +175,51 @@
       re: /\b(vazen\w* (zakazni|klient|uzivatel)\w*|dear customer)\b/ }
   ];
 
+  // Jména firem a úřadů, jak je lidé píšou v textu zprávy (bez diakritiky, malými písmeny).
+  // Slouží k odhalení zprávy, která mluví jménem firmy, ale odkazuje jinam.
+  var TEXT_BRANDS = [
+    { re: 'ceska posta|posta|balikovna', gen: 'České pošty', label: 'Česká pošta', official: 'ceskaposta.cz' },
+    { re: 'ppl', gen: 'PPL', label: 'PPL', official: 'ppl.cz' },
+    { re: 'dpd', gen: 'DPD', label: 'DPD', official: 'dpd.cz' },
+    { re: 'gls', gen: 'GLS', label: 'GLS', official: 'gls-group.eu' },
+    { re: 'zasilkovna|packeta', gen: 'Zásilkovny', label: 'Zásilkovna', official: 'zasilkovna.cz' },
+    { re: 'dhl', gen: 'DHL', label: 'DHL', official: 'dhl.com' },
+    { re: 'alza', gen: 'Alzy', label: 'Alza', official: 'alza.cz' },
+    { re: 'cez', gen: 'ČEZ', label: 'ČEZ', official: 'cez.cz' },
+    { re: 'csob', gen: 'ČSOB', label: 'ČSOB', official: 'csob.cz' },
+    { re: 'komercni banka', gen: 'Komerční banky', label: 'Komerční banka', official: 'kb.cz' },
+    { re: 'ceska sporitelna|sporitelna', gen: 'České spořitelny', label: 'Česká spořitelna', official: 'csas.cz' },
+    { re: 'raiffeisen\\w*', gen: 'Raiffeisenbank', label: 'Raiffeisenbank', official: 'rb.cz' },
+    { re: 'moneta', gen: 'MONETY', label: 'MONETA', official: 'moneta.cz' },
+    { re: 'air bank', gen: 'Air Bank', label: 'Air Bank', official: 'airbank.cz' },
+    { re: 'fio banka|fio', gen: 'Fio banky', label: 'Fio banka', official: 'fio.cz' },
+    { re: 'mbank', gen: 'mBank', label: 'mBank', official: 'mbank.cz' },
+    { re: 'unicredit', gen: 'UniCredit', label: 'UniCredit', official: 'unicreditbank.cz' },
+    { re: 'revolut', gen: 'Revolutu', label: 'Revolut', official: 'revolut.com' },
+    { re: 'paypal', gen: 'PayPalu', label: 'PayPal', official: 'paypal.com' },
+    { re: 'banka|banky|bance|vasi banky|bankovnictvi', gen: 'banky', label: 'banka', official: '' },
+    { re: 'financni sprava|financni urad|financni spravy', gen: 'finanční správy', label: 'finanční správa', official: 'financnisprava.cz' },
+    { re: 'cssz', gen: 'ČSSZ', label: 'ČSSZ', official: 'cssz.cz' },
+    { re: 'vzp', gen: 'VZP', label: 'VZP', official: 'vzp.cz' },
+    { re: 'urad prace', gen: 'Úřadu práce', label: 'Úřad práce', official: 'uradprace.cz' },
+    { re: 'policie|policie cr', gen: 'policie', label: 'policie', official: 'policie.gov.cz' },
+    { re: 'exekutor\\w*', gen: 'exekutora', label: 'exekutor', official: '' },
+    { re: 'seznam|email\\.cz', gen: 'Seznamu', label: 'Seznam', official: 'seznam.cz' },
+    { re: 'o2', gen: 'O2', label: 'O2', official: 'o2.cz' },
+    { re: 't-mobile|tmobile', gen: 'T-Mobile', label: 'T-Mobile', official: 't-mobile.cz' },
+    { re: 'vodafone', gen: 'Vodafonu', label: 'Vodafone', official: 'vodafone.cz' },
+    { re: 'netflix', gen: 'Netflixu', label: 'Netflix', official: 'netflix.com' },
+    { re: 'apple|icloud', gen: 'Applu', label: 'Apple', official: 'apple.com' },
+    { re: 'microsoft|outlook|office 365', gen: 'Microsoftu', label: 'Microsoft', official: 'microsoft.com' },
+    { re: 'facebook|instagram|meta', gen: 'Facebooku', label: 'Facebook', official: 'facebook.com' },
+    { re: 'whatsapp', gen: 'WhatsAppu', label: 'WhatsApp', official: 'whatsapp.com' },
+    { re: 'vinted', gen: 'Vinted', label: 'Vinted', official: 'vinted.cz' },
+    { re: 'bazos', gen: 'Bazoše', label: 'Bazoš', official: 'bazos.cz' },
+    { re: 'sbazar', gen: 'Sbazaru', label: 'Sbazar', official: 'sbazar.cz' },
+    { re: 'dalnicni znamk\\w*', gen: 'prodeje dálničních známek', label: 'prodej dálničních známek', official: 'edalnice.cz' },
+    { re: 'lidl|kaufland|albert|billa|tesco|penny', gen: 'obchodního řetězce', label: 'obchodní řetězec', official: '' }
+  ];
+
   // Kombinace, které jsou nebezpečnější než jednotlivé znaky dohromady.
   // floor: minimální úroveň, kterou kombinace vyžaduje; answerFloor: úroveň, pod kterou ji nestáhne žádná odpověď.
   var COMBOS = [
@@ -183,6 +231,12 @@
       detail: 'Nabídka snadné práce s přesunem na WhatsApp nebo Telegram je typický pracovní podvod.' },
     { id: 'code-ask', needs: ['smscode', 'codeask'], w: 40, floor: 'high', answerFloor: 'high', title: 'Chce váš kód',
       detail: 'Nikdo, ani banka, ani kamarád, nepotřebuje kód, který přišel vám. Kdo ho chce, chce převzít váš účet nebo schválit platbu.' },
+    { id: 'brandlink-request', needs: ['brandlink', 'credentials|payment|threat|marketplace'], w: 25, floor: 'high', answerFloor: 'high', title: 'Jménem firmy chce údaje nebo peníze přes cizí odkaz',
+      detail: 'Zpráva se tváří jako známá firma nebo úřad, chce po vás údaje nebo platbu a odkaz přitom nevede na jejich web. Tak vypadá phishing.' },
+    { id: 'invest-link', needs: ['invest', 'hasurl|payment'], w: 15, floor: 'mid', answerFloor: 'mid', title: 'Slib výdělku s odkazem nebo platbou',
+      detail: 'Investice se zaručeným ziskem přes odkaz ve zprávě nebo s platbou předem jsou typický investiční podvod.' },
+    { id: 'prize-link', needs: ['prize', 'hasurl|payment|credentials'], w: 15, floor: 'mid', answerFloor: 'mid', title: 'Výhra přes odkaz',
+      detail: 'Výhra nebo odměna, pro kterou máte kliknout na odkaz nebo něco zaplatit, je návnada.' },
     { id: 'callback-threat', needs: ['callback', 'threat|bank'], w: 15, floor: 'mid', answerFloor: 'mid', title: 'Výhrůžka a telefonní číslo',
       detail: 'Zpráva straší a chce, abyste zavolali na její číslo. Volejte jen na číslo, které si sami najdete.' }
   ];
@@ -199,6 +253,8 @@
     for (var i = 0; i < s.length; i++) {
       var ch = s[i];
       if (/\s/.test(ch)) { out += ' '; continue; }
+      // Čtečka textu často přečte malé l jako velké I („podezřeIou“). Uvnitř malých písmen je to vždy l.
+      if (ch === 'I' && i > 0 && /[a-zà-ž]/.test(s[i - 1]) && (i === s.length - 1 || /[a-zà-ž]/.test(s[i + 1]) || !/[A-Za-zÀ-ž]/.test(s[i + 1]))) { out += 'l'; continue; }
       var d = ch.normalize('NFD').charAt(0).toLowerCase().charAt(0);
       out += d || ch;
     }
@@ -440,7 +496,15 @@
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ascii)) {
       add('ip', 'high', 'Místo názvu jen čísla', 'Slušné firmy neposílají odkazy na číselnou adresu serveru.');
     }
-    var isShort = SHORTENERS.some(function (d) { return endsWithDomain(ascii, d); });
+    // Adresa poskládaná jen z obecných slov a čísel (pay-pay40.net, login-update.eu, info-cz.co)
+    var regLabel = (reg || '').split('.')[0] || '';
+    var parts = regLabel.split('-').map(function (x) { return x.replace(/\d+$/, ''); }).filter(Boolean);
+    if (parts.length >= 2 && parts.every(function (x) { return GENERIC_WORDS.indexOf(x) !== -1; })) {
+      add('generic-domain', 'mid', 'Adresa složená z obecných slov',
+        'Název „' + regLabel + '“ nic neříká o tom, kdo web provozuje. Podvodníci si takové adresy zakládají ve velkém.');
+    }
+    // Sdílené odkazy Googlu (fotky, mapy) nejsou obecný zkracovač.
+    var isShort = SHORTENERS.some(function (d) { return endsWithDomain(ascii, d); }) && !/^(photos|maps)\.app\.goo\.gl$/.test(ascii);
     if (isShort) {
       add('shortener', 'mid', 'Zkrácený odkaz', 'Nevidíte, kam doopravdy vede. Seriózní firmy ve zprávách zkracovače používají jen výjimečně.');
     }
@@ -711,6 +775,33 @@
     urls.forEach(function (u) { if (u.brandCat && !u.official && u.summary.kind === 'fake') cats[u.brandCat] = true; });
     var present = {};
     t.ids.forEach(function (id) { present[id] = true; });
+    if (urls.length) present.hasurl = true;
+
+    // Zpráva mluví jménem firmy nebo úřadu, ale odkaz vede jinam než na jejich web.
+    var unofficial = urls.filter(function (u) { return !u.official; });
+    if (unofficial.length) {
+      var normT = normKeep(text);
+      var skipU = found.map(function (f) { return [f.start, f.end]; });
+      var hit = null;
+      for (var bi = 0; bi < TEXT_BRANDS.length && !hit; bi++) {
+        var tb = TEXT_BRANDS[bi];
+        var re = new RegExp('(^|[^a-z0-9])(' + tb.re + ')(?![a-z0-9])', 'g'), mm;
+        while ((mm = re.exec(normT))) {
+          var st = mm.index + mm[1].length, sp = [st, st + mm[2].length];
+          if (skipU.some(function (k) { return sp[0] < k[1] && sp[1] > k[0]; })) continue;
+          // odkaz na oficiální web stejné značky to nevysvětlí, jiný odkaz ano
+          hit = { tb: tb, span: sp }; break;
+        }
+      }
+      if (hit) {
+        var off = hit.tb.official ? ' Oficiální web je ' + hit.tb.official + '.' : '';
+        t.findings.push({ sev: 'mid', title: 'Píše jménem ' + hit.tb.gen + ', ale odkaz vede jinam',
+          detail: 'Zpráva se tváří jako ' + hit.tb.label + ', odkaz ale nevede na jejich web (' + unofficial[0].registrable + ').' + off,
+          rule: 'brandlink', code: 'brandlink', spans: [hit.span] });
+        t.score += 20;
+        present.brandlink = true;
+      }
+    }
     Object.keys(cats).forEach(function (c) { present[c] = true; });
 
     // Kombinace znaků
@@ -906,6 +997,10 @@
   function normalizeOcrText(text) {
     var t = String(text || '').replace(/\r/g, '');
     t = t.replace(/\b(https?)\s*[:;.,]?\s*\/\s*\/\s*/gi, function (m, p) { return p.toLowerCase() + '://'; });
+    // Čtečka občas přečte jen jedno lomítko: „https:/adresa“.
+    t = t.replace(/\b(https?)\s*[:;.,]\s*\/(?!\/)\s*/gi, function (m, p) { return p.toLowerCase() + '://'; });
+    // Mezera za pomlčkou uvnitř adresy: „https://vraceni- dane.online“.
+    t = t.replace(/(https?:\/\/[^\s]*-) +(?=[a-z0-9])/gi, '$1');
     var lines = t.split('\n');
     var out = [];
     for (var i = 0; i < lines.length; i++) {

@@ -11,8 +11,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var OCR_BASE = new URL('assets/ocr/', document.baseURI).href;
   // Skutečná velikost souborů stahovaných při prvním čtení obrázku (tesseract.min.js, worker.min.js,
-  // tesseract-core-simd-lstm.wasm.js, ces + eng traineddata.gz) = 9 306 978 B.
-  var OCR_DOWNLOAD_MB = '9,3';
+  // tesseract-core-simd-lstm.wasm.js, ces.traineddata.gz) = 6 354 105 B.
+  var OCR_DOWNLOAD_MB = '6,4';
   var state = { analysis: null, answers: {}, source: 'text', ocr: null, kind: 'msg', mode: 'msg', call: {}, preselect: null };
   var EBOOK_URL = 'https://pebmedia.cz/obchod/ebooky/';
   var EBOOK_COVER = 'assets/img/ebook-nenech-se-nachytat.webp';
@@ -536,26 +536,14 @@
   }
 
   // Zvětšení malých snímků, odstíny šedi a převrácení tmavého režimu pro lepší čtení
+  // Úprava obrázku před čtením je v assets/ocr-prep.js (zvětšení, odstíny šedi, převrácení tmavého režimu).
   function prepareImage(file) {
     return new Promise(function (resolve) {
       var img = new Image();
       var url = URL.createObjectURL(file);
       img.onload = function () {
-        try {
-          var scale = img.width < 1000 ? 2 : 1;
-          var c = document.createElement('canvas');
-          c.width = img.width * scale; c.height = img.height * scale;
-          var ctx = c.getContext('2d');
-          ctx.drawImage(img, 0, 0, c.width, c.height);
-          var d = ctx.getImageData(0, 0, c.width, c.height), px = d.data, sum = 0, i;
-          for (i = 0; i < px.length; i += 4) {
-            var g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-            px[i] = px[i + 1] = px[i + 2] = g; sum += g;
-          }
-          if (sum / (px.length / 4) < 110) for (i = 0; i < px.length; i += 4) px[i] = px[i + 1] = px[i + 2] = 255 - px[i];
-          ctx.putImageData(d, 0, 0);
-          resolve(c);
-        } catch (e) { resolve(file); } finally { URL.revokeObjectURL(url); }
+        try { resolve(window.PPOcrPrep.prepareCanvas(img, 'basic')); }
+        catch (e) { resolve(file); } finally { URL.revokeObjectURL(url); }
       };
       img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
       img.src = url;
@@ -601,7 +589,9 @@
       .then(function () { return prepareImage(file); })
       .then(function (img) {
         if (!img) { stage = 'image'; throw new Error('image'); }
-        return window.Tesseract.recognize(img, 'ces+eng', {
+        // Čeština samotná čte české texty výrazně lépe než kombinace s angličtinou (měření v test/ocr-bench).
+        // Režim stránky 6 = jeden souvislý blok textu, což odpovídá snímku zprávy.
+        var opts = {
           workerPath: OCR_BASE + 'worker.min.js',
           corePath: OCR_BASE,
           langPath: OCR_BASE + 'lang',
@@ -609,10 +599,15 @@
           logger: function (m) {
             var p = typeof m.progress === 'number' ? m.progress : 0;
             if (m.status === 'loading tesseract core') ocrStatus('Stahuji čtečku textu', $('ocr-detail').textContent, 5 + p * 25);
-            else if (m.status === 'loading language traineddata') ocrStatus('Stahuji češtinu a angličtinu pro čtení', $('ocr-detail').textContent, 30 + p * 35);
+            else if (m.status === 'loading language traineddata') ocrStatus('Stahuji češtinu pro čtení', $('ocr-detail').textContent, 30 + p * 35);
             else if (m.status === 'initializing api' || m.status === 'initializing tesseract') ocrStatus('Připravuji čtení', '', 66);
             else if (m.status === 'recognizing text') { stage = 'recognize'; ocrStatus('Čtu text z obrázku', '', 70 + p * 30); }
           }
+        };
+        return window.Tesseract.createWorker('ces', 1, opts).then(function (w) {
+          return w.setParameters({ tessedit_pageseg_mode: '6', user_defined_dpi: '300', preserve_interword_spaces: '1' })
+            .then(function () { return w.recognize(img); })
+            .then(function (res) { w.terminate(); return res; }, function (err) { w.terminate(); throw err; });
         });
       })
       .then(function (res) {

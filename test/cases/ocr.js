@@ -9,6 +9,10 @@ module.exports = {
       why: 'Odkaz zalomený přes dva řádky na hranici tečky.' },
     { id: 'wrapped-path', input: 'Sledujte https://ceskaposta-doruceni.top/cz/\ntrack?id=88231', mustContainUrl: 'ceskaposta-doruceni.top',
       why: 'Odkaz zalomený v cestě.' },
+    { id: 'single-slash', input: 'Vyplňte údaje karty: https:/vraceni-dane.online/form', mustContainUrl: 'vraceni-dane.online',
+      why: 'Česká čtečka občas přečte jen jedno lomítko za https:.' },
+    { id: 'space-after-hyphen', input: 'Vyplňte údaje karty: https://vraceni- dane.online/form', mustContainUrl: 'vraceni-dane.online',
+      why: 'Mezera za pomlčkou uvnitř adresy po zalomení řádku.' },
     { id: 'normal-lines', input: 'Dobrý den,\nzásilka je na cestě.\nDěkujeme', mustEqual: 'Dobrý den,\nzásilka je na cestě.\nDěkujeme',
       why: 'Běžné řádky se nesmí slepit.' }
   ],

@@ -25,7 +25,7 @@ assets/report.js           sestavení textu oznámení pro Policii ČR (čistá 
 assets/app.js              rozhraní, historie a tlačítko Zpět, OCR, formulář
 assets/style.css           vzhled podle design systému pebmedia.cz
 assets/fonts.css, fonts/   písma hostovaná lokálně (GDPR)
-assets/ocr/                Tesseract.js 5.1.1, worker, WASM jádro (SIMD i bez SIMD) a jazyková data ces + eng
+assets/ocr/                Tesseract.js 5.1.1, worker, WASM jádro (SIMD i bez SIMD) a jazyková data ces
                            (bajtově shodné s balíčky z npm, licence Apache-2.0 a MIT)
 vercel.json                CSP, HSTS a další bezpečnostní hlavičky
 docs/                      návrh oddílu do zásad ochrany osobních údajů
@@ -35,6 +35,15 @@ test/browser/              testy v prohlížeči (Playwright): síť, CSP, OCR n
 ```
 
 ## Testy
+
+Čtení obrázků: aplikace používá češtinu (bez angličtiny) a režim stránky 6. Na realistických snímcích z telefonu (`test/ocr-bench`) to snížilo chybovost znaků zhruba z 10 % na 1 %. Snímky se dají znovu vyrobit a změřit:
+
+```
+python3 test/ocr-bench/make_screens.py       # 43 snímků SMS (iOS, Android, tmavý režim, JPEG, celé obrazovky)
+python3 test/ocr-bench/run_bench.py          # chybovost znaků a správnost odkazů pro různá nastavení
+```
+
+Velký korpus: `test/corpus/generate.js` skládá 10 000 podvodných zpráv ze vzorů skutečných kampaní (14 druhů, s diakritikou i bez, s chybami čtečky textu) a 3 000 běžných zpráv. `node test/corpus/measure.js --show 10` ukáže záchyt po druzích a nezachycené zprávy. Test v `test/run.js` hlídá záchyt aspoň 99,5 % a plané poplachy nejvýš 0,5 %.
 
 ```
 node test/run.js                         # regresní testy, při selhání exit kód 1

@@ -13,7 +13,7 @@ PEBMedia Protect je bezplatný nástroj, který pomáhá posoudit podezřelé zp
 
 **Údaje ve formuláři pro policii.** Údaje, které vyplníte při přípravě textu oznámení (například jméno, datum narození nebo adresa), zůstávají jen ve vašem prohlížeči a po zavření stránky zmizí. Nástroj oznámení nikam neodesílá. Pokud zvolíte „Otevřít e-mail“, otevře se váš vlastní e-mailový program a o odeslání rozhodujete vy.
 
-**Data uložená ve vašem prohlížeči.** Pro rychlejší čtení obrázků si prohlížeč uloží jazyková data pro češtinu a angličtinu (úložiště IndexedDB s názvem `keyval-store`). Neobsahují žádné vaše zprávy ani osobní údaje. Smažete je vymazáním dat webu v nastavení prohlížeče.
+**Data uložená ve vašem prohlížeči.** Pro rychlejší čtení obrázků si prohlížeč uloží jazyková data pro češtinu (úložiště IndexedDB s názvem `keyval-store`). Neobsahují žádné vaše zprávy ani osobní údaje. Smažete je vymazáním dat webu v nastavení prohlížeče.
 
 **Cookies a analytika.** Nástroj nepoužívá cookies, analytické ani reklamní nástroje. **[OVĚŘIT po nasazení: hosting nesmí přidávat vlastní cookies ani analytiku.]**
 

@@ -135,14 +135,18 @@
     seen = seen || [];
     var shuffle = function (a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)); var x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
     var fresh = TRAINING.filter(function (t) { return seen.indexOf(t.id) === -1; });
-    var pool = fresh.length >= n ? fresh : TRAINING;
-    var scams = shuffle(pool.filter(function (t) { return t.scam; }));
-    var oks = shuffle(pool.filter(function (t) { return !t.scam; }));
-    var nOk = Math.min(oks.length, Math.max(2, Math.round(n * (2 + Math.floor(rnd() * 3)) / 8)));
-    var nScam = Math.min(scams.length, n - nOk);
-    var round = scams.slice(0, nScam).concat(oks.slice(0, n - nScam));
-    if (round.length < n) round = round.concat(shuffle(TRAINING.filter(function (t) { return round.indexOf(t) === -1; })).slice(0, n - round.length));
-    return { items: shuffle(round), reset: pool === TRAINING };
+    var reset = fresh.length < n;
+    var pool = reset ? TRAINING : fresh;
+    // Počet zpráv v pořádku: 2 až 4 z 8, zbytek podvody.
+    var nOk = Math.max(2, Math.round(n * (2 + Math.floor(rnd() * 3)) / 8));
+    // Z každého druhu nejdřív neviděné, a když jich je málo, doplníme z ostatních stejného druhu.
+    function take(isScam, k) {
+      var first = shuffle(pool.filter(function (t) { return t.scam === isScam; }));
+      var rest = shuffle(TRAINING.filter(function (t) { return t.scam === isScam && first.indexOf(t) === -1; }));
+      return first.concat(rest).slice(0, k);
+    }
+    var round = take(false, nOk).concat(take(true, n - nOk));
+    return { items: shuffle(round), reset: reset };
   }
 
   var api = { TRAINING: TRAINING, pickRound: pickRound };

@@ -270,11 +270,18 @@ record('trénink', { id: 'pocet', why: 'Banka tréninku má 100 ukázek.' }, TR.
     const ids = r.items.map(t => t.id);
     if (new Set(ids).size !== 8) dupOk = false;
     if (r.items.filter(t => t.scam).length < 2 || r.items.filter(t => !t.scam).length < 2) mixOk = false;
-    if (!r.reset && ids.some(id => seen.indexOf(id) !== -1)) ok = false;
+    if (!r.reset) {
+      // Opakovat se smí jen druh, kterému došly neviděné ukázky (aby kolo mělo vždy oba druhy).
+      const fresh = TR.TRAINING.filter(t => seen.indexOf(t.id) === -1);
+      const need = s => r.items.filter(t => t.scam === s).length;
+      const short = s => Math.max(0, need(s) - fresh.filter(t => t.scam === s).length);
+      const repeats = ids.filter(id => seen.indexOf(id) !== -1).length;
+      if (repeats > short(true) + short(false)) ok = false;
+    }
     seen = r.reset ? ids : seen.concat(ids);
     rounds++;
   }
-  record('trénink', { id: 'kola-bez-opakovani', why: 'Dokud jsou neviděné ukázky, kolo neopakuje žádnou už viděnou.' }, ok && dupOk, { kol: rounds });
+  record('trénink', { id: 'kola-bez-opakovani', why: 'Dokud jsou neviděné ukázky daného druhu, kolo neopakuje žádnou už viděnou.' }, ok && dupOk, { kol: rounds });
   record('trénink', { id: 'kola-mix', why: 'Každé kolo má aspoň 2 podvody a 2 zprávy v pořádku.' }, mixOk, {});
 })();
 TR.TRAINING.forEach(function (t) {
@@ -292,6 +299,23 @@ TR.TRAINING.forEach(function (t) {
     const e = A.evaluate(A.analyze(t), {});
     record('knihovna', { id: 'ukazka-' + n, why: 'Ukázka podvodu z knihovny nesmí vyjít jako nízké riziko.' }, e.level !== 'low', { vstup: t, výsledek: e.level });
   }
+})();
+
+
+/* ---------- 10. Velký korpus: 10 000 složených podvodů a 3 000 běžných zpráv ---------- */
+(function () {
+  const { generate } = require('./corpus/generate.js');
+  const corpus = generate({ scams: 10000, legit: 3000 });
+  let scams = 0, caught = 0, legit = 0, fp = 0; const missEx = [], fpEx = [];
+  for (const m of corpus) {
+    const e = A.evaluate(A.analyze(m.text), {});
+    if (m.scam) { scams++; if (e.level !== 'low') caught++; else if (missEx.length < 5) missEx.push(m.text); }
+    else { legit++; if (e.level !== 'low') { fp++; if (fpEx.length < 5) fpEx.push(e.level + ' ' + m.text); } }
+  }
+  record('korpus', { id: 'zachyt-podvodu', why: 'Ze 10 000 složených podvodů musí být aspoň 99,5 % označeno jako zvýšené nebo vysoké riziko.' },
+    caught / scams >= 0.995, { zachyceno: (100 * caught / scams).toFixed(2) + ' %', ukázky_minutí: missEx.length ? missEx : undefined });
+  record('korpus', { id: 'plane-poplachy', why: 'Z 3 000 běžných zpráv smí být nejvýš 0,5 % označeno jako riziko.' },
+    fp / legit <= 0.005, { planý_poplach: (100 * fp / legit).toFixed(2) + ' %', ukázky: fpEx.length ? fpEx : undefined });
 })();
 
 /* ---------- Výpis ---------- */

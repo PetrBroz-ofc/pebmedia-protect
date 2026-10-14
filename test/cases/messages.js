@@ -234,5 +234,21 @@ module.exports = [
   { id: 'legit-rent-deposit', expect: 'low', why: 'Kauce za byt při podpisu smlouvy je běžná.', input: 'Kauce za byt je 20 000 Kč, platí se při podpisu smlouvy.' },
   { id: 'legit-account-closed', expect: 'low', why: 'Potvrzení zrušení účtu na žádost uživatele není výhrůžka.', input: 'Váš účet byl úspěšně zrušen na vaši žádost.' },
   { id: 'scam-code-forward', expect: 'high', codes: ['code-ask'], why: 'Prosba o přeposlání kódu z WhatsAppu je převzetí účtu.', input: 'Ahoj, poslal jsem ti omylem šestimístný kód z WhatsAppu. Můžeš mi ho prosím přeposlat?' },
-  { id: 'scam-money-mule', expect: 'high', codes: ['mule'], why: 'Přeposílání cizích plateb přes vlastní účet je praní peněz.', input: 'Nabízíme práci: přijmete na svůj účet platby a pošlete je dál, za každou dostanete 10 %.' }
+  { id: 'scam-money-mule', expect: 'high', codes: ['mule'], why: 'Přeposílání cizích plateb přes vlastní účet je praní peněz.', input: 'Nabízíme práci: přijmete na svůj účet platby a pošlete je dál, za každou dostanete 10 %.' },
+  // ---------- Doplňky z velkého korpusu (14. 10. 2026) ----------
+  { id: 'scam-brand-text-generic-link', expect: 'high', codes: ['brandlink'],
+    why: 'Zpráva jménem banky chce zrušit platbu přes adresu, která s bankou nesouvisí.',
+    input: 'UniCredit: Zaznamenali jsme podezřelou platbu 51 028 Kč. Pokud jste ji neprovedli, zrušte ji zde: https://pay-pay40.net/cz' },
+  { id: 'scam-ocr-capital-i', expect: 'notLow',
+    why: 'Čtečka textu přečetla l jako I, varovné znaky se musí poznat i tak.',
+    input: 'Váš účet byl zabIokován kvůli podezřeIé aktivitě. Přihlaste se: https://secure-login.com/cz' },
+  { id: 'scam-generic-domain', expect: 'notLow', codes: ['generic-domain'],
+    why: 'Adresa složená jen z obecných slov a k tomu výzva k platbě.',
+    input: 'Zásilka čeká na zaplacení dopravy 5,90 Kč. Podrobnosti: https://update-doruceni.cz/s/1hq66v' },
+  { id: 'legit-news-banks-fees', expect: 'low',
+    why: 'Odkaz na zprávu o poplatcích bank není žádost o platbu.',
+    input: 'Banky mění poplatky, víc tady: https://www.novinky.cz/zpravy/73178' },
+  { id: 'legit-google-photos-share', expect: 'low',
+    why: 'Sdílené album z Google Fotek není zkracovač odkazů.',
+    input: 'Na Vinted jsem prodala bundu, díky za tip! Fotka: https://photos.app.goo.gl/u6bl7s' }
 ];
