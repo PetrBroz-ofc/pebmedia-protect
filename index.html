@@ -83,12 +83,30 @@
         </div>
         <p class="ocr-note" id="ocr-note" role="alert" hidden></p>
 
+        <div class="crop" id="crop" hidden>
+          <p class="crop-title" id="crop-title" tabindex="-1">Označte jen podezřelou zprávu</p>
+          <p class="crop-hint">Přejeďte prstem nebo myší přes zprávu, rámeček pak můžete upravit za rohy. Hodiny, jména a klávesnice čtení zhoršují.</p>
+          <div class="crop-stage" id="crop-stage">
+            <img id="crop-img" alt="Nahraný snímek obrazovky">
+            <div class="crop-box" id="crop-box">
+              <span class="crop-h nw" data-h="nw"></span><span class="crop-h ne" data-h="ne"></span>
+              <span class="crop-h sw" data-h="sw"></span><span class="crop-h se" data-h="se"></span>
+            </div>
+          </div>
+          <div class="crop-bar">
+            <button type="button" class="link" id="crop-cancel">Zrušit</button>
+            <button type="button" class="btn btn-secondary" id="crop-all">Přečíst celý obrázek</button>
+            <button type="button" class="btn btn-primary" id="crop-go">Přečíst výběr <span class="arrow" aria-hidden="true">→</span></button>
+          </div>
+        </div>
+
         <div class="composer-bar">
           <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/*" hidden>
           <button type="button" class="btn-ghost" id="pick">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.6-2.2h6.8L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="12.8" r="3.4"/></svg>
             Nahrát screenshot
           </button>
+          <span class="beta-tag" title="Čtení textu z fotek ještě ladíme">Zkušební provoz</span>
           <button type="button" class="btn btn-primary" id="go">Zkontrolovat <span class="arrow" aria-hidden="true">→</span></button>
         </div>
       </div>

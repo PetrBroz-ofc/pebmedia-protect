@@ -25,6 +25,8 @@ def check(name, ok, detail=''):
 def wait_result(pg, timeout=120):
     t = time.time()
     while time.time() - t < timeout:
+        if pg.is_visible('#crop'):
+            pg.click('#crop-all')
         if pg.is_visible('#verdict'):
             return 'verdict'
         if pg.is_visible('#ocr-note') and 'is-error' in (pg.get_attribute('#ocr-note', 'class') or ''):
@@ -40,6 +42,7 @@ def main():
         with sync_playwright() as p:
             b = p.chromium.launch()
             ctx = b.new_context(viewport={'width': 400, 'height': 860})
+            ctx.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:%d' % PORT)
             pg = ctx.new_page()
             reqs, csp, errors = [], [], []
             pg.on('request', lambda r: reqs.append((r.url, r.method, (r.post_data_buffer or b''))))
@@ -75,6 +78,8 @@ def main():
             for img, (kind, lvl) in expect.items():
                 if pg.is_visible('[data-act="again"]'):
                     pg.click('[data-act="again"]')
+                if pg.is_visible('#crop'):
+                    pg.click('#crop-cancel')
                 pg.fill('#msg', 'STARY TEXT ' + SECRET)
                 pg.set_input_files('#file', os.path.join(FIX, img))
                 res = wait_result(pg)
@@ -92,6 +97,32 @@ def main():
                         detail += ' | domény=' + str(doms)
                 check('OCR ' + img, ok, detail)
             # nepodporovaný soubor
+            if pg.is_visible('[data-act="again"]'):
+                pg.click('[data-act="again"]')
+            # --- výřez fotky, druhé čtení, sdílení a zpětná vazba ---
+            if pg.is_visible('[data-act="again"]'):
+                pg.click('[data-act="again"]')
+            pg.set_input_files('#file', os.path.join(FIX, 'light.png'))
+            pg.wait_for_selector('#crop:not([hidden])')
+            check('po nahrání fotky se ukáže výběr výřezu', pg.is_visible('#crop-box') and not pg.is_visible('#msg'))
+            box = pg.query_selector('#crop-stage').bounding_box()
+            # rámeček jen přes spodní část s bublinou (bez čísla odesílatele nahoře)
+            pg.mouse.move(box['x'] + 4, box['y'] + box['height'] * 0.22); pg.mouse.down()
+            pg.mouse.move(box['x'] + box['width'] - 4, box['y'] + box['height'] - 4, steps=6); pg.mouse.up()
+            r = pg.evaluate("[parseFloat(document.getElementById('crop-box').style.top), parseFloat(document.getElementById('crop-box').style.height)]")
+            check('rámeček jde nakreslit tažením', r[0] > 15 and r[1] < 85, r)
+            pg.click('#crop-go')
+            res = wait_result(pg)
+            spec = pg.inner_text('.specimen') if res == 'verdict' else ''
+            check('výřez se přečte a vyhodnotí', res == 'verdict' and 'ceskaposta' in spec.replace(' ', '') and '731 555' not in spec, spec[:120])
+            check('u výsledku z fotky je vidět i přečtený výřez', pg.is_visible('.ocr-thumb'))
+            href = pg.get_attribute('#fb-mail', 'href')
+            check('zpětná vazba bez souhlasu neobsahuje text zprávy', href.startswith('mailto:info.pebmedia@gmail.com') and 'doru%C4%8Dena' not in href, href[:120])
+            pg.check('#fb-incl')
+            check('se souhlasem e-mail obsahuje text zprávy', 'doru%C4%8Dena' in pg.get_attribute('#fb-mail', 'href'))
+            pg.click('[data-act="share"]'); pg.wait_for_timeout(300)
+            clip = pg.evaluate('navigator.clipboard.readText()')
+            check('sdílení zkopíruje verdikt bez textu zprávy', 'protect.pebmedia.cz' in clip and 'podvod' in clip and 'doručena' not in clip and 'ceskaposta-doruceni' not in clip, clip[:160])
             if pg.is_visible('[data-act="again"]'):
                 pg.click('[data-act="again"]')
             pg.set_input_files('#file', os.path.join(FIX, 'document.pdf'))

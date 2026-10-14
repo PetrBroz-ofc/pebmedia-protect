@@ -126,6 +126,7 @@
     $('ocr-note').hidden = true;
     $('url-err').hidden = true;
     $('mail-err').hidden = true;
+    if (!$('crop').hidden) closeCrop();
     if (!keepText) {
       $('msg').value = '';
       ['url-in', 'm-name', 'm-addr', 'm-subj', 'm-body', 'm-head'].forEach(function (id) { $(id).value = ''; });
@@ -331,6 +332,37 @@
     return h;
   }
 
+  /* ---------- Zpětná vazba a sdílení výsledku ---------- */
+  var FEEDBACK = 'info.pebmedia@gmail.com';
+  var KIND_LABEL = { msg: 'zpráva', url: 'odkaz', mail: 'e-mail' };
+  // Odkaz do e-mailu se zpětnou vazbou. Text zprávy jen se souhlasem a zkrácený, aby se vešel do odkazu.
+  function feedbackHref(ev, v, withText) {
+    var a = state.analysis || { text: '' };
+    var lines = ['Dobrý den,', '', 'Protect vyhodnotil: ' + v.pill + ' (' + KIND_LABEL[state.kind] + (state.source === 'ocr' ? ', text z obrázku' : '') + ').', '', 'Co podle mě nesedí:', '', ''];
+    if (withText && a.text) { lines.push('Text kontrolované zprávy:'); lines.push(a.text.slice(0, 1200)); }
+    if (state.source === 'ocr') { lines.push(''); lines.push('(Pokud můžete, přiložte prosím i obrázek.)'); }
+    return 'mailto:' + FEEDBACK + '?subject=' + encodeURIComponent('Protect: zpětná vazba k výsledku') + '&body=' + encodeURIComponent(lines.join('\n'));
+  }
+  // Sdílení: jen verdikt a názvy hlavních důvodů, bez textu zprávy a bez odkazu ze zprávy.
+  function shareResult(ev, v, reasons) {
+    var top = reasons.filter(function (r) { return r.sev === 'high' || r.sev === 'mid'; }).slice(0, 3).map(function (r) { return '• ' + r.title; });
+    var lead = ev.level === 'high' ? 'Pozor, tahle zpráva vypadá jako podvod.' : ev.level === 'mid' ? 'U téhle zprávy něco nesedí, raději si ji ověřte.' : 'U téhle zprávy Protect nenašel varovné znaky.';
+    var text = lead + (top.length ? '\n' + top.join('\n') : '') + '\n\nZkontrolováno zdarma na PEBMedia Protect:';
+    var url = 'https://protect.pebmedia.cz';
+    var msg = $('share-msg');
+    var copy = function () {
+      var full = text + ' ' + url;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(full).then(function () { msg.textContent = 'Zkopírováno, vložte to do zprávy.'; }, function () { msg.textContent = 'Kopírování se nepovedlo.'; });
+        } else msg.textContent = 'Sdílení tento prohlížeč neumí.';
+      } catch (e) { msg.textContent = 'Sdílení tento prohlížeč neumí.'; }
+    };
+    if (navigator.share) {
+      navigator.share({ title: 'PEBMedia Protect', text: text, url: url }).catch(function (e) { if (!e || e.name !== 'AbortError') copy(); });
+    } else copy();
+  }
+
   function renderResult() {
     var a = state.analysis;
     var ev = A.evaluate(a, state.answers);
@@ -376,7 +408,8 @@
       h += '<div class="ocr-banner' + (q ? ' is-uncertain' : '') + '"><p class="mono-label">Text z obrázku</p>' +
         '<p>' + (q ? 'Obrázek se četl hůř, text může obsahovat chyby. ' : '') +
         'Text jsme přečetli z obrázku. Čtení může splést podobné znaky, hlavně v odkazu, a písmena z jiných abeced pozná jen u vloženého textu. Opravte ho podle originálu a zkontrolujte znovu.</p>' +
-        '<label class="sr" for="ocr-edit">Přečtený text</label><textarea id="ocr-edit" rows="5" spellcheck="false">' + esc(a.text) + '</textarea>' +
+        (state.ocr && state.ocr.thumb ? '<div class="ocr-compare"><img class="ocr-thumb" src="' + state.ocr.thumb + '" alt="Přečtený výřez obrázku"><div class="ocr-compare-text">' : '<div>') +
+        '<label class="sr" for="ocr-edit">Přečtený text</label><textarea id="ocr-edit" rows="5" spellcheck="false">' + esc(a.text) + '</textarea></div>' + (state.ocr && state.ocr.thumb ? '</div>' : '') +
         '<button type="button" class="btn btn-secondary" data-act="recheck">Zkontrolovat opravený text</button></div>';
     }
 
@@ -469,7 +502,14 @@
       '<b>Chcete podvody poznat dřív, než vám přijdou?</b>' +
       '<span>Nenech se nachytat vysvětluje nejčastější triky podvodníků srozumitelně a s příklady. Hodí se pro celou rodinu.</span>' +
       '<span class="ebook-card-cta">Prohlédnout e-book <span class="arrow" aria-hidden="true">→</span></span></span></a>';
+    h += '<div class="share"><div><p class="mono-label">Sdílet</p><p class="share-q">Poslat výsledek blízkým</p>' +
+      '<p class="share-sub">Pošleme jen hodnocení a hlavní důvody, ne samotnou zprávu.</p></div>' +
+      '<div class="share-btns"><button type="button" class="btn btn-secondary" data-act="share">Poslat výsledek</button><span class="share-msg" id="share-msg" role="status"></span></div></div>';
     h += '<p class="disclaimer">Hodnocení je orientační odhad podle známých triků podvodníků. Nový nebo neobvyklý podvod nemusí poznat a bezpečnost zprávy nezaručuje.</p>';
+    h += '<div class="feedback"><span class="beta-tag">Zkušební provoz</span><p><b>Vyhodnotil Protect zprávu špatně?</b> Napište nám. Každá taková zpráva pomůže, aby příště poznal víc.</p>' +
+      '<label class="check"><input type="checkbox" id="fb-incl"><span>Přiložit do e-mailu i text kontrolované zprávy</span></label>' +
+      '<a class="btn btn-secondary" id="fb-mail" href="mailto:' + FEEDBACK + '">Napsat, co nesedí</a>' +
+      '<p class="small-note">Otevře se váš e-mail, nic se neodešle samo. ' + (fromOcr ? 'Šlo o fotku? Přiložte ji prosím k e-mailu.' : '') + '</p></div>';
 
     var box = $('result');
     box.innerHTML = h;
@@ -480,6 +520,15 @@
     box.querySelector('[data-act="again"]').addEventListener('click', function () { resetCheck(); go('check'); setMode(kind); $(MODE_FIRST[kind]).focus(); });
     var hb = box.querySelector('[data-act="help"]');
     if (hb) hb.addEventListener('click', function () { go('help'); });
+    var sh = box.querySelector('[data-act="share"]');
+    if (sh) sh.addEventListener('click', function () { shareResult(ev, v, reasons); });
+    var fb = $('fb-mail');
+    if (fb) {
+      var setFb = function () { fb.href = feedbackHref(ev, v, $('fb-incl').checked); };
+      setFb();
+      $('fb-incl').addEventListener('change', setFb);
+      fb.addEventListener('click', setFb);
+    }
     var tv = box.querySelector('[data-act="to-verdict"]');
     if (tv) tv.addEventListener('click', function () { $('verdict').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('verdict-title').focus({ preventScroll: true }); });
     var ry = box.querySelector('[data-act="report-yes"]');
@@ -536,20 +585,6 @@
   }
 
   // Zvětšení malých snímků, odstíny šedi a převrácení tmavého režimu pro lepší čtení
-  // Úprava obrázku před čtením je v assets/ocr-prep.js (zvětšení, odstíny šedi, převrácení tmavého režimu).
-  function prepareImage(file) {
-    return new Promise(function (resolve) {
-      var img = new Image();
-      var url = URL.createObjectURL(file);
-      img.onload = function () {
-        try { resolve(window.PPOcrPrep.prepareCanvas(img, 'basic')); }
-        catch (e) { resolve(file); } finally { URL.revokeObjectURL(url); }
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
-      img.src = url;
-    });
-  }
-
   function ocrStatus(text, detail, pct) {
     $('ocr-status').textContent = text;
     $('ocr-detail').textContent = detail || '';
@@ -564,6 +599,9 @@
   }
 
   var busy = false;
+  var crop = { img: null, rect: { x: 0, y: 0, w: 1, h: 1 } };
+
+  // 1) Nahraný obrázek nejdřív ukážeme s rámečkem, aby šlo vybrat jen podezřelou zprávu.
   function runOcr(file) {
     if (!file) return;
     if (!/^image\//.test(file.type)) {
@@ -573,25 +611,129 @@
       return;
     }
     if (busy) return;
-    busy = true;
     resetCheck();
     go('check', { replace: true });
+    setMode('msg');
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      crop.img = img;
+      crop.rect = { x: 0, y: 0, w: 1, h: 1 };
+      $('crop-img').src = url;
+      $('crop').hidden = false;
+      $('msg').hidden = true;
+      $('drop').classList.add('is-cropping');
+      layoutCrop();
+      $('crop-title').focus();
+      announce('Obrázek je nahraný. Označte zprávu a zvolte Přečíst výběr.');
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      ocrNote('Obrázek se nepodařilo otevřít. Zkuste jiný snímek obrazovky, nebo text zprávy opište do pole.', 'error');
+    };
+    img.src = url;
+  }
+
+  function closeCrop() {
+    $('crop').hidden = true;
+    $('msg').hidden = false;
+    $('drop').classList.remove('is-cropping');
+    if ($('crop-img').src && $('crop-img').src.indexOf('blob:') === 0) URL.revokeObjectURL($('crop-img').src);
+    $('crop-img').removeAttribute('src');
+  }
+
+  function layoutCrop() {
+    var r = crop.rect, box = $('crop-box');
+    box.style.left = (r.x * 100) + '%';
+    box.style.top = (r.y * 100) + '%';
+    box.style.width = (r.w * 100) + '%';
+    box.style.height = (r.h * 100) + '%';
+  }
+
+  // Tažení rámečku a jeho rohů myší i prstem.
+  (function () {
+    var stage = $('crop-stage'), drag = null;
+    function pos(e) { var b = stage.getBoundingClientRect(); return { x: (e.clientX - b.left) / b.width, y: (e.clientY - b.top) / b.height }; }
+    stage.addEventListener('pointerdown', function (e) {
+      var h = e.target.getAttribute && e.target.getAttribute('data-h');
+      var inBox = e.target === $('crop-box');
+      var full = crop.rect.w > 0.98 && crop.rect.h > 0.98;
+      // Mimo rámeček, nebo když je vybraný celý obrázek: tažením se kreslí nový výběr
+      if (!h && (!inBox || full)) {
+        // Klik mimo rámeček: začít nový výběr od tohoto bodu
+        var p0 = pos(e);
+        crop.rect = { x: p0.x, y: p0.y, w: 0.001, h: 0.001 };
+        h = 'se';
+      }
+      drag = { h: h || 'move', start: pos(e), rect: Object.assign({}, crop.rect) };
+      stage.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var p = pos(e), dx = p.x - drag.start.x, dy = p.y - drag.start.y, r = Object.assign({}, drag.rect);
+      var clamp = function (v) { return Math.max(0, Math.min(1, v)); };
+      if (drag.h === 'move') {
+        r.x = Math.max(0, Math.min(1 - r.w, r.x + dx));
+        r.y = Math.max(0, Math.min(1 - r.h, r.y + dy));
+      } else {
+        var x1 = r.x, y1 = r.y, x2 = r.x + r.w, y2 = r.y + r.h;
+        if (drag.h.indexOf('w') !== -1) x1 = clamp(x1 + dx);
+        if (drag.h.indexOf('e') !== -1) x2 = clamp(x2 + dx);
+        if (drag.h.indexOf('n') !== -1) y1 = clamp(y1 + dy);
+        if (drag.h.indexOf('s') !== -1) y2 = clamp(y2 + dy);
+        r = { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.max(0.04, Math.abs(x2 - x1)), h: Math.max(0.03, Math.abs(y2 - y1)) };
+        r.w = Math.min(r.w, 1 - r.x); r.h = Math.min(r.h, 1 - r.y);
+      }
+      crop.rect = r;
+      layoutCrop();
+    });
+    var end = function () { drag = null; };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+  })();
+
+  $('crop-cancel').addEventListener('click', function () { closeCrop(); $('pick').focus(); });
+  $('crop-all').addEventListener('click', function () { crop.rect = { x: 0, y: 0, w: 1, h: 1 }; readCrop(); });
+  $('crop-go').addEventListener('click', function () { readCrop(); });
+
+  // Výřez v plném rozlišení původního obrázku.
+  function cropCanvas() {
+    var img = crop.img, r = crop.rect;
+    var W = img.naturalWidth, H = img.naturalHeight;
+    var sx = Math.round(r.x * W), sy = Math.round(r.y * H), sw = Math.max(8, Math.round(r.w * W)), sh = Math.max(8, Math.round(r.h * H));
+    var c = document.createElement('canvas');
+    c.width = sw; c.height = sh;
+    c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    return c;
+  }
+  function thumbOf(c) {
+    var k = Math.min(1, 520 / Math.max(c.width, c.height));
+    var t = document.createElement('canvas');
+    t.width = Math.round(c.width * k); t.height = Math.round(c.height * k);
+    t.getContext('2d').drawImage(c, 0, 0, t.width, t.height);
+    try { return t.toDataURL('image/jpeg', 0.8); } catch (e) { return ''; }
+  }
+
+  // 2) Čtení výběru. Když je výsledek nejistý, zkusíme ještě jednou se zvětšením a vezmeme lepší.
+  function readCrop() {
+    if (busy || !crop.img) return;
+    busy = true;
+    var src = cropCanvas();
+    var thumb = thumbOf(src);
+    closeCrop();
     $('ocr').hidden = false;
+    $('ocr-img').src = thumb;
     var firstTime = !window.Tesseract;
     ocrStatus('Připravuji čtení textu', firstTime ? 'Poprvé se stahuje čtečka textu (asi ' + OCR_DOWNLOAD_MB + ' MB). Příště už to bude rychlejší.' : '', 3);
     announce('Čtu text z obrázku.');
-    var r = new FileReader();
-    r.onload = function () { $('ocr-img').src = r.result; };
-    r.readAsDataURL(file);
-    var stage = 'download';
+    var stage = 'download', worker = null;
 
     loadScript(OCR_BASE + 'tesseract.min.js')
-      .then(function () { return prepareImage(file); })
-      .then(function (img) {
-        if (!img) { stage = 'image'; throw new Error('image'); }
+      .then(function () {
         // Čeština samotná čte české texty výrazně lépe než kombinace s angličtinou (měření v test/ocr-bench).
         // Režim stránky 6 = jeden souvislý blok textu, což odpovídá snímku zprávy.
-        var opts = {
+        return window.Tesseract.createWorker('ces', 1, {
           workerPath: OCR_BASE + 'worker.min.js',
           corePath: OCR_BASE,
           langPath: OCR_BASE + 'lang',
@@ -603,29 +745,39 @@
             else if (m.status === 'initializing api' || m.status === 'initializing tesseract') ocrStatus('Připravuji čtení', '', 66);
             else if (m.status === 'recognizing text') { stage = 'recognize'; ocrStatus('Čtu text z obrázku', '', 70 + p * 30); }
           }
-        };
-        return window.Tesseract.createWorker('ces', 1, opts).then(function (w) {
-          return w.setParameters({ tessedit_pageseg_mode: '6', user_defined_dpi: '300', preserve_interword_spaces: '1' })
-            .then(function () { return w.recognize(img); })
-            .then(function (res) { w.terminate(); return res; }, function (err) { w.terminate(); throw err; });
         });
       })
+      .then(function (w) {
+        worker = w;
+        return w.setParameters({ tessedit_pageseg_mode: '6', user_defined_dpi: '300', preserve_interword_spaces: '1' });
+      })
+      .then(function () {
+        stage = 'recognize';
+        return worker.recognize(window.PPOcrPrep.prepareCanvas(src, 'basic'));
+      })
       .then(function (res) {
-        var raw = (res && res.data && res.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
-        var conf = res && res.data ? res.data.confidence : 0;
-        var text = A.normalizeOcrText(raw);
-        var q = A.assessOcr(text, conf);
+        var first = pack(res);
+        if (first.q.readable && first.q.quality !== 'uncertain' && first.conf >= 75) return first;
+        // Druhý pokus: větší zvětšení. Necháme lepší z obou čtení.
+        ocrStatus('Čtu obrázek ještě jednou pečlivěji', '', 85);
+        return worker.recognize(window.PPOcrPrep.prepareCanvas(src, 'gray')).then(function (res2) {
+          var second = pack(res2);
+          var score = function (r) { return (r.q.readable ? 1000 : 0) + r.conf; };
+          return score(second) > score(first) ? second : first;
+        }, function () { return first; });
+      })
+      .then(function (best) {
         $('ocr').hidden = true;
-        if (!q.readable) {
+        if (!best.q.readable) {
           // Nečitelný výsledek nevyhodnocujeme, aby nevzniklo falešné „nízké riziko“.
           $('msg').value = '';
-          ocrNote('Z obrázku se nepodařilo spolehlivě přečíst text, takže zprávu nemůžeme posoudit. Opište sem prosím aspoň odkaz a hlavní větu, nebo nahrajte ostřejší snímek.', 'error');
+          ocrNote('Z obrázku se nepodařilo spolehlivě přečíst text, takže zprávu nemůžeme posoudit. Zkuste označit jen samotnou zprávu, nahrát ostřejší snímek, nebo text opsat do pole.', 'error');
           announce('Text z obrázku se nepodařilo přečíst.');
           $('msg').focus();
           return;
         }
-        $('msg').value = text;
-        state.ocr = { quality: q.quality, confidence: q.confidence };
+        $('msg').value = best.text;
+        state.ocr = { quality: best.q.quality, confidence: best.q.confidence, thumb: thumb };
         runCheck('ocr');
       })
       .catch(function () {
@@ -634,14 +786,22 @@
           ocrNote(navigator.onLine === false
             ? 'Jste offline, takže se čtečka textu nemohla stáhnout. Připojte se k internetu, nebo text zprávy opište do pole.'
             : 'Čtečku textu se nepodařilo stáhnout. Zkuste to za chvíli znovu, nebo text zprávy opište do pole.', 'error');
-        } else if (stage === 'image') {
-          ocrNote('Obrázek se nepodařilo otevřít. Zkuste jiný snímek obrazovky, nebo text zprávy opište do pole.', 'error');
         } else {
           ocrNote('Z obrázku se text přečíst nepodařilo. Opište sem prosím aspoň odkaz a hlavní větu ze zprávy.', 'error');
         }
         announce('Čtení obrázku se nepovedlo.');
       })
-      .then(function () { busy = false; });
+      .then(function () {
+        busy = false;
+        if (worker) { try { worker.terminate(); } catch (e) { /* už ukončený */ } }
+      });
+
+    function pack(res) {
+      var raw = (res && res.data && res.data.text || '').replace(/\n{3,}/g, '\n\n').trim();
+      var conf = res && res.data ? res.data.confidence : 0;
+      var text = A.normalizeOcrText(raw);
+      return { text: text, conf: conf, q: A.assessOcr(text, conf) };
+    }
   }
 
   $('pick').addEventListener('click', function () { $('file').click(); });
