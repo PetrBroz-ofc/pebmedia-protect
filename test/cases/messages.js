@@ -250,5 +250,15 @@ module.exports = [
     input: 'Banky mění poplatky, víc tady: https://www.novinky.cz/zpravy/73178' },
   { id: 'legit-google-photos-share', expect: 'low',
     why: 'Sdílené album z Google Fotek není zkracovač odkazů.',
-    input: 'Na Vinted jsem prodala bundu, díky za tip! Fotka: https://photos.app.goo.gl/u6bl7s' }
+    input: 'Na Vinted jsem prodala bundu, díky za tip! Fotka: https://photos.app.goo.gl/u6bl7s' },
+  // ---------- Zprávy, které poslal provozovatel k ověření (14. 10. 2026) ----------
+  { id: 'scam-meta-copyright', expect: 'high',
+    why: 'Falešná Meta: porušení autorských práv, potvrzení totožnosti do 24 hodin, smazání profilu a odkaz na cizí doménu s fb.',
+    input: 'Upozornění Meta: Váš účet porušil autorská práva a zásady komunity. Pokud do 24 hodin nepotvrdíte svou totožnost, bude váš profil trvale smazán. Odvolat se můžete zde: http://fb-support-security-check.com' },
+  { id: 'scam-facebook-security-code', expect: 'high',
+    why: 'Falešné bezpečnostní upozornění Facebooku chce kód na cizím webu.',
+    input: 'Facebook Security: Zaznamenali jsme podezřelé přihlášení. Pro potvrzení, že se jedná o vás, klikněte na odkaz a zadejte kód, který vám přišel: http://meta-secure-login.net' },
+  { id: 'scam-marketplace-dpd-card', expect: 'high',
+    why: 'Falešný kupující, „peníze už přišly“, potvrzení převzetí a údaje karty na napodobenině DPD.',
+    input: 'Mám o vaše zboží zájem. Pošlu pro to kurýra DPD/Zásilkovnu, peníze vám už přišly na účet. Zde potvrďte převzetí peněz a zadejte údaje své karty: http://dpd-cz-kurier.com' }
 ];

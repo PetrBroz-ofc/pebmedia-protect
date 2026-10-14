@@ -53,7 +53,7 @@
     { name: 'Netflix', kw: ['netflix'], official: ['netflix.com'], cat: 'account' },
     { name: 'Apple', kw: ['apple', 'icloud'], official: ['apple.com', 'icloud.com'], cat: 'account' },
     { name: 'Microsoft', kw: ['microsoft', 'outlook', 'office365'], official: ['microsoft.com', 'outlook.com', 'live.com', 'office.com'], cat: 'account' },
-    { name: 'Facebook', kw: ['facebook', 'instagram'], official: ['facebook.com', 'instagram.com', 'meta.com', 'fb.com'], cat: 'account' },
+    { name: 'Facebook', kw: ['facebook', 'instagram', 'fb', 'meta'], official: ['facebook.com', 'instagram.com', 'meta.com', 'fb.com', 'fb.me'], cat: 'account' },
     { name: 'WhatsApp', kw: ['whatsapp'], official: ['whatsapp.com'], cat: 'account' },
     { name: 'České dráhy', kw: ['ceskedrahy'], official: ['cd.cz'], cat: 'shop' },
     { name: 'Vinted', kw: ['vinted'], official: ['vinted.cz', 'vinted.com'], cat: 'marketplace' },
@@ -69,6 +69,9 @@
 
   // Obecná slova, ze kterých podvodníci skládají celé adresy.
   var GENERIC_WORDS = SCAM_TOKENS.concat(['cz', 'klient', 'portal', 'web', 'my', 'moje', 'eu', 'cs', 'pay', 'online', 'form', 'kontrola', 'data']);
+
+  // Slova, která podvodníci lepí přímo za krátký název značky (csobpay.org, pplcz.top).
+  var GLUE_WORDS = SCAM_TOKENS.concat(['cz', 'pay', 'online', 'klient', 'web', 'portal', 'kurier', 'kuryr', 'eu', 'sk']);
 
   // Bezplatné hostingy a služby, kde si web nebo formulář založí kdokoli.
   // Fungují jako veřejné přípony: o vlastníkovi rozhoduje až část před nimi.
@@ -101,7 +104,7 @@
   var TEXT_RULES = [
     { id: 'urgency', w: 15, title: 'Spěchá na vás',
       detail: 'Chce, abyste jednali hned a nestihli si nic ověřit.',
-      re: /\b(ihned|okamzit\w*|neprodlen\w*|nalehav\w*|posledni (vyzv|upozorn|sanc)\w*|do \d{1,2} (hod|hodin|dnu|dni)\w*|do (zitr|pulnoc)\w*|vyprs\w*|propadn\w*|jeste dnes|dnes do)\b/ },
+      re: /\b(do dnesni pulnoc\w*|do konce dne|ihned|okamzit\w*|neprodlen\w*|nalehav\w*|posledni (vyzv|upozorn|sanc)\w*|do \d{1,2} (hod|hodin|dnu|dni)\w*|do (zitr|pulnoc)\w*|vyprs\w*|propadn\w*|jeste dnes|dnes do)\b/ },
     // Žádost o zaplacení nebo poslání peněz. Pouhá zmínka o platbě (např. příchozí platba) sem nepatří.
     { id: 'payment', w: 15, cat: 'payment', title: 'Chce peníze',
       detail: 'U malých doplatků jim jde často o údaje z vaší karty. Každou žádost o peníze si ověřte jinou cestou.',
@@ -114,13 +117,13 @@
       re: /\b(zasilk\w*|balik\w*|baliku|doruc\w*|kuryr\w*|sledovaci cislo|prepravc\w*|vyzvednout|vyzvednuti|nedorucen\w*|postovn\w*|adres\w* (je )?neuplna|neuplna adres\w*)\b/ },
     { id: 'credentials', w: 20, cat: 'credentials', title: 'Chce vaše údaje',
       detail: 'Pošta, banka ani úřad po vás přes odkaz nikdy nechtějí heslo, PIN, kartu ani kód z SMS.',
-      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualiz\w* (\w+ )?(udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|(zadej\w*|zadat|vypln\w*|dopln\w*|potvrd\w*|uved\w*|sdel\w*|aktualizuj\w*) (\w+ ){0,2}(udaje|cislo) (z |o |ke |k )?((vasi|sve|platebni) )*kart[aeuy]|(zadej\w*|zadat|vypln\w*|dopln\w*|aktualizuj\w*) (\w+ ){0,2}platebni udaje|(potvrd|aktualiz|dopln|over)\w* (\w+ )?(dorucovaci )?adres\w*|overeni (vasi |platebni )?karty|overte (si )?kartu|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod|nadiktuj\w*)\b/ },
+      re: /\b(heslo|hesla|prihlas\w*|overte|overit|overeni (uctu|totoznosti|udaju)|aktualiz\w* (\w+ )?(udaje|informace|ucet)|potvrdte kartu|cislo karty|udaje (z|o) karty|udaje karty|(zadej\w*|zadat|vypln\w*|dopln\w*|potvrd\w*|uved\w*|sdel\w*|aktualizuj\w*) (\w+ ){0,2}(udaje|cislo) (z |o |ke |k )?((vasi|sve|platebni) )*kart[aeuy]|(zadej\w*|zadat|vypln\w*|dopln\w*|aktualizuj\w*) (\w+ ){0,2}platebni udaje|(potvrd|aktualiz|dopln|over)\w* (\w+ )?(dorucovaci )?adres\w*|(potvrd|over|prokaz)\w* (svou |vasi |sve )?(totoznost|identit)\w*|overeni (vasi |platebni )?karty|overte (si )?kartu|cvv|cvc|pin|kod z sms|overovaci kod|jednorazov\w* kod|potvrzovaci kod|nadiktuj\w*)\b/ },
     { id: 'bankstaff', w: 30, cat: 'bank', title: 'Scénář falešného bankéře',
       detail: 'Bezpečný účet neexistuje. Skutečná banka nikdy nechce, abyste peníze někam převáděli.',
       re: /\b(bezpecn\w* ucet|bezpecnostni\w* oddeleni\w*|podezrel\w* (transakc|platb|prihlas)\w*|vas ucet (je|byl) (ohrozen|napaden|zneuzit)\w*|prevedte (penize|uspory|prostredky)|prevest (penize|uspory|prostredky)|ochran\w* (vasich )?(uspor|penez))\b/ },
     { id: 'threat', w: 15, title: 'Straší vás',
       detail: 'Hrozí zablokováním, pokutou, exekucí nebo policií, abyste zpanikařili.',
-      re: /\b(zablokovan\w*|zablokujeme|blokac\w*|pozastaven\w*|zrusen\w* (uctu|sluzby|zasilky)|exekuc\w*|pokut\w*|trestni (oznameni|rizeni|stihani)|soudni\w*|vymahan\w*|bude vracen\w*|(ucet|sluzba|karta|stranka|profil) (\w+ )?(bude|byl\w*) (zrusen|zablokovan|pozastaven|smazan|odstranen|deaktivovan)\w*|(bude|budou) (smazan|odstranen|deaktivovan)\w*|zatcen\w*|vazb\w*|zlikvidovan\w*|na naklady (prijemce|adresata)|porusuje pravidla|napaden\w* (\d+ )?vir\w*|prestanete (dostavat|prijimat)\w*)\b/ },
+      re: /\b(zablokovan\w*|zablokujeme|blokac\w*|pozastaven\w*|zrusen\w* (uctu|sluzby|zasilky)|exekuc\w*|pokut\w*|trestni (oznameni|rizeni|stihani)|soudni\w*|vymahan\w*|bude vracen\w*|(ucet|sluzba|karta|stranka|profil) (\w+ )?(bude|byl\w*) (zrusen|zablokovan|pozastaven|smazan|odstranen|deaktivovan)\w*|(bude|budou) (smazan|odstranen|deaktivovan)\w*|zatcen\w*|vazb\w*|zlikvidovan\w*|na naklady (prijemce|adresata)|porusuje pravidla|porusil\w* (\w+ )?(autorsk\w* prav\w*|zasady|pravidla)|zasad\w* komunity|(ucet|profil|stranka|sluzba|karta) (\w+ ){0,2}(bude|byl\w*|budou) (\w+ )?(smazan|zablokovan|zrusen|deaktivovan|odstranen|omezen)\w*|trvale (smazan|zablokovan|odstranen)\w*|napaden\w* (\d+ )?vir\w*|prestanete (dostavat|prijimat)\w*)\b/ },
     { id: 'prize', w: 15, cat: 'prize', title: 'Slibuje výhru',
       detail: 'Výhra v soutěži, do které jste se nepřihlásili, je klasická návnada.',
       re: /\b(vyhral\w*|vyhra|vyhry|gratulujeme|odmen\w*|darek zdarma|zdarma ziskat|losovani|vylosovan\w*|byli jste vybran\w*|rozdavame|kazdemu,? kdo|ziskejte \w+ za 1 kc)\b/ },
@@ -425,6 +428,13 @@
           var kw = br.kw[k];
           var exact = tokens.indexOf(kw) !== -1 || joined === kw;
           var prefix = !exact && kw.length >= 5 && (tokens.some(function (t) { return t.indexOf(kw) === 0; }) || joined.indexOf(kw) === 0);
+          // Krátký název slepený s typickým slovem podvodníků: csobpay, alzaplatba, pplcz, dpdtrack
+          var glued = !exact && !prefix && kw.length >= 3 && tokens.some(function (t) {
+            if (t.indexOf(kw) !== 0) return false;
+            var rest = t.slice(kw.length).replace(/\d+$/, '');
+            return !!rest && (GLUE_WORDS.indexOf(rest) !== -1);
+          });
+          if (glued) prefix = true;
           if (exact || prefix) return { brand: br, how: exact ? 'exact' : 'prefix', sub: lab.sub, label: lab.text };
         }
       }

@@ -60,7 +60,7 @@ function generate(opts) {
   // ---------- Šablony podvodů ----------
   const PKG = [['Česká pošta', 'ceskaposta'], ['PPL', 'ppl'], ['DPD', 'dpd'], ['GLS', 'gls'], ['Zásilkovna', 'zasilkovna'], ['DHL', 'dhl'], ['Balíkovna', 'balikovna'], ['Packeta', 'packeta'], ['Pošta', 'posta']];
   const BANK = [['Česká spořitelna', 'csas'], ['ČSOB', 'csob'], ['Komerční banka', 'kb'], ['Raiffeisenbank', 'raiffeisen'], ['MONETA', 'moneta'], ['Air Bank', 'airbank'], ['Fio banka', 'fio'], ['mBank', 'mbank'], ['UniCredit', 'unicredit'], ['Revolut', 'revolut'], ['Banka', null]];
-  const ACC = [['Seznam', 'seznam'], ['Microsoft', 'microsoft'], ['Apple', 'apple'], ['iCloud', 'icloud'], ['Netflix', 'netflix'], ['Facebook', 'facebook'], ['Instagram', 'instagram'], ['Outlook', 'outlook'], ['Email.cz', null], ['WhatsApp', 'whatsapp']];
+  const ACC = [['Meta', 'fb'], ['Meta', 'meta'], ['Seznam', 'seznam'], ['Microsoft', 'microsoft'], ['Apple', 'apple'], ['iCloud', 'icloud'], ['Netflix', 'netflix'], ['Facebook', 'facebook'], ['Instagram', 'instagram'], ['Outlook', 'outlook'], ['Email.cz', null], ['WhatsApp', 'whatsapp']];
   const FAM = ['mami', 'mamko', 'tati', 'tato', 'babi', 'dědo', 'maminko', 'tatínku', 'babičko'];
   const MKT = [['Bazoš', 'bazos'], ['Vinted', 'vinted'], ['Sbazar', 'sbazar'], ['Facebook Marketplace', 'facebook']];
 
@@ -151,7 +151,8 @@ function generate(opts) {
         `${b}: Někdo se přihlásil k vašemu účtu z ${pick(['Ruska', 'Číny', 'neznámého zařízení'])}. Pokud jste to nebyli vy, okamžitě ověřte heslo: ${u}`,
         `Vaše e-mailová schránka je plná. Rozšiřte úložiště zdarma, jinak přestanete dostávat poštu: ${u}`,
         `${b}: Vaše stránka porušuje pravidla a bude smazána. Podejte odvolání ${deadline()}: ${u}`,
-        `${b}: Vaše heslo vyprší. Pro zachování přístupu ho potvrďte zde: ${u}`
+        `${b}: Vaše heslo vyprší. Pro zachování přístupu ho potvrďte zde: ${u}`,
+        `Upozornění ${b}: Váš účet porušil ${pick(['autorská práva', 'zásady komunity', 'pravidla'])}. Pokud ${deadline()} nepotvrdíte svou totožnost, bude váš profil trvale smazán. Odvolat se můžete zde: ${u}`
       ]);
     },
     threat: () => pick([
