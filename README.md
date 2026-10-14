@@ -18,6 +18,8 @@ Co umí:
 ```
 index.html                 stránka aplikace (kontrola, nahlášení pokusu, pomoc po podvodu, okno s oznámením)
 assets/analyzer.js         pravidla, rozbor odkazů, vyhodnocení, pomocné funkce pro OCR (bez závislostí)
+pravni-informace.html      provozovatel, podmínky používání, ochrana osobních údajů, úložiště v prohlížeči, licence
+assets/licence/            texty licencí písem a Tesseractu
 assets/guides.js           nouzový plán, průvodce telefonátem, trénink (čisté funkce a data, bez DOM)
 assets/report.js           sestavení textu oznámení pro Policii ČR (čistá funkce, bez DOM)
 assets/app.js              rozhraní, historie a tlačítko Zpět, OCR, formulář

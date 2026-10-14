@@ -783,3 +783,27 @@ body.is-leaving > *:not(.leave-curtain) {
 }
 /* Telefon na šířku: hlavička nezabírá třetinu obrazovky */
 @media (max-height: 500px) and (orientation: landscape) { .site-header { position: static; } }
+
+/* ---------------------------------- Právní informace ---------------------------------- */
+.legal-back { font-size: 15px; font-weight: 500; color: var(--ink-soft); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.legal-back:hover { color: var(--ink); }
+.legal { padding-block: 48px 72px; max-width: 760px; }
+.legal h1 { font-size: clamp(36px, 7vw, 56px); line-height: 1.05; letter-spacing: -0.03em; }
+.legal-date { color: var(--ink-soft); margin-top: 10px; font-family: var(--font-mono); font-size: 13px; }
+.legal-toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.legal-toc a { font-size: 14px; color: var(--ink); text-decoration: none; background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 8px 14px; min-height: 40px; display: inline-flex; align-items: center; }
+.legal-toc a:hover { border-color: var(--accent); background: var(--accent-tint); }
+.legal section { margin-top: 44px; scroll-margin-top: 90px; }
+.legal h2 { font-size: clamp(22px, 4vw, 28px); padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.legal h3 { font-size: 17px; margin-top: 22px; }
+.legal p, .legal li { color: var(--ink); font-size: 16px; }
+.legal p { margin-top: 10px; }
+.legal ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 8px; }
+.legal code { font-family: var(--font-mono); font-size: 13.5px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+.legal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+#clear-msg { color: var(--accent-ink); font-size: 14.5px; }
+.legal-footer { border-top: 1px solid var(--border); padding-block: 24px 40px; font-size: 13.5px; color: var(--ink-soft); }
+.legal-footer p + p { margin-top: 8px; }
+.legal-footer a { color: var(--ink-soft); }
+.footer-bottom .footer-operator { flex: 1 1 100%; max-width: none; font-size: 12.5px; color: var(--f-faint); padding-top: 12px; border-top: 1px solid var(--f-line); }
+.footer-bottom .footer-operator a { color: var(--f-soft); }

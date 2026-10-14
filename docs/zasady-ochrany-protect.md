@@ -1,6 +1,6 @@
 # Návrh oddílu do Zásad ochrany osobních údajů na pebmedia.cz
 
-Stav: návrh k vložení na https://pebmedia.cz/privacy.html před spuštěním protect.pebmedia.cz.
+Stav: původní návrh. Platné znění je na stránce `pravni-informace.html` (protect.pebmedia.cz/pravni-informace.html), na pebmedia.cz/privacy.html je na ni odkaz.
 Body označené **[OVĚŘIT]** závisí na nastavení hostingu a je potřeba je potvrdit před zveřejněním.
 
 ---
