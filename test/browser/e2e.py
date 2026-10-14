@@ -205,8 +205,8 @@ def main():
             check('po nových režimech žádné CSP ani JS chyby', not csp and not errors, (csp + errors)[:3])
 
             # --- mobil ---
-            for w in (320, 360):
-                m = b.new_page(viewport={'width': w, 'height': 700}); m.goto(BASE)
+            for w, hgt in ((280, 653), (320, 568), (360, 740), (390, 844), (430, 932), (568, 320), (768, 1024)):
+                m = b.new_page(viewport={'width': w, 'height': hgt}); m.goto(BASE)
                 over = []
                 def ov(name):
                     d = m.evaluate('document.documentElement.scrollWidth - window.innerWidth')
