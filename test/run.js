@@ -318,6 +318,30 @@ TR.TRAINING.forEach(function (t) {
     fp / legit <= 0.005, { planý_poplach: (100 * fp / legit).toFixed(2) + ' %', ukázky: fpEx.length ? fpEx : undefined });
 })();
 
+/* ---------- Počítání návštěv ---------- */
+(function () {
+  const vm = require('vm');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'assets', 'stats.js'), 'utf8');
+  function run(hostname) {
+    const calls = [], added = [];
+    const win = { location: { hostname } };
+    win.va = function () { calls.push([].slice.call(arguments)); };
+    const ctx = { window: win, location: win.location, URL, Object, encodeURIComponent,
+      document: { createElement: () => ({}), head: { appendChild: (s) => added.push(s) } } };
+    vm.runInNewContext(src, ctx);
+    return { calls, added };
+  }
+  const local = run('localhost');
+  record('pocitani', { id: 'jen-produkce', why: 'Mimo protect.pebmedia.cz se počítání nesmí načíst.' }, local.added.length === 0 && local.calls.length === 0, {});
+  const prod = run('protect.pebmedia.cz');
+  const before = prod.calls.find(c => c[0] === 'beforeSend');
+  record('pocitani', { id: 'skript-z-vlastni-domeny', why: 'Skript se načítá z vlastní domény, CSP zůstává self.' },
+    prod.added.length === 1 && prod.added[0].src === '/_vercel/insights/script.js', { src: prod.added[0] && prod.added[0].src });
+  const out = before && before[1]({ type: 'pageview', url: 'https://protect.pebmedia.cz/?ref=fb-skupina&text=tajne#pomoc' });
+  record('pocitani', { id: 'adresa-bez-obsahu', why: 'Odešle se jen cesta a parametr ref, nic za # ani jiné parametry.' },
+    !!out && out.url === 'https://protect.pebmedia.cz/?ref=fb-skupina', { url: out && out.url });
+})();
+
 /* ---------- Výpis ---------- */
 const total = results.pass + results.fail;
 for (const f of failures) {

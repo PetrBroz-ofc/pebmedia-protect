@@ -5,6 +5,8 @@ Text zprávy ani obrázek se neodesílají: analýza i čtení obrázků (OCR) b
 
 Výsledek je orientační odhad podle pravidel, ne záruka bezpečnosti.
 
+Návštěvy se počítají anonymně přes Vercel Web Analytics (`assets/stats.js`, jen na protect.pebmedia.cz, bez cookies). Odchází jen cesta stránky a parametr `ref`, nikdy obsah zpráv. Odkazy do skupin pište ve tvaru `https://protect.pebmedia.cz/?ref=nazev-skupiny`, ve statistikách pak uvidíte, odkud lidé přišli.
+
 Co umí:
 
 * **Kontrola zprávy** (text nebo screenshot přes OCR), **odkazu** (rozbor skutečné domény, subdomény, cesty, punycode, zkracovačů a HTTPS, odkaz se nikdy neotevírá) a **e-mailu** (jméno proti adrese, bezplatné schránky, Reply-To, výsledek SPF/DKIM/DMARC jen pokud je ve vložených hlavičkách).

@@ -348,7 +348,7 @@
     var top = reasons.filter(function (r) { return r.sev === 'high' || r.sev === 'mid'; }).slice(0, 3).map(function (r) { return '• ' + r.title; });
     var lead = ev.level === 'high' ? 'Pozor, tahle zpráva vypadá jako podvod.' : ev.level === 'mid' ? 'U téhle zprávy něco nesedí, raději si ji ověřte.' : 'U téhle zprávy Protect nenašel varovné znaky.';
     var text = lead + (top.length ? '\n' + top.join('\n') : '') + '\n\nZkontrolováno zdarma na PEBMedia Protect:';
-    var url = 'https://protect.pebmedia.cz';
+    var url = 'https://protect.pebmedia.cz/?ref=sdileni';
     var msg = $('share-msg');
     var copy = function () {
       var full = text + ' ' + url;
